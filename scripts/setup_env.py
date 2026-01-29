@@ -21,12 +21,10 @@ def find_config_file():
         print(f"Example content:")
         print(f"""
 [DEFAULT]
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-ANTHROPIC_MODEL=claude-4.5-sonnet
-ANTHROPIC_DEFAULT_OPUS_MODEL=claude-4.1-opus
-ANTHROPIC_DEFAULT_SONNET_MODEL=claude-4.5-sonnet
-ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-3.5-haiku
-CLAUDE_CODE_SUBAGENT_MODEL=claude-4.5-sonnet
+ANTHROPIC_BASE_URL=your_base_url
+ANTHROPIC_AUTH_TOKEN=your_auth_token_here
+ANTHROPIC_MODEL=claude-4-sonnet
+ANTHROPIC_SMALL_FAST_MODEL=gpt-4.1-nano
 DISABLE_NON_ESSENTIAL_MODEL_CALLS=1
 API_HOST=0.0.0.0
 API_PORT=8000
@@ -47,9 +45,7 @@ MCP_CONFLUENCE_SERVER_URL=https://your-company.atlassian.net/wiki
 MCP_CONFLUENCE_USERNAME=your_confluence_username@example.com
 MCP_CONFLUENCE_API_TOKEN=your_confluence_api_token_here
 
-Or use simple key=value format:
-ANTHROPIC_BASE_URL=https://api.rdsec.trendmicro.com/prod/aiendpoint/
-ANTHROPIC_AUTH_TOKEN=your_auth_token_here
+
 ...
 """)
         return None
