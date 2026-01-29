@@ -331,7 +331,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Changelog
 
-### v1.2.0 (2025-01-XX)
+### v1.2.0 (2025-09-24)
 
 - **🎯 One-Click Deployment**: Added uvx support for easy installation and running
 - **📋 Simplified Configuration**: User configuration via `~/.trendaiagent/env.conf`
