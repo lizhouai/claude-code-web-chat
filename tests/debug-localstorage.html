@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调试LocalStorage会话数据</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .button {
+            background: #007cba;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #005a87;
+        }
+        .json-display {
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .session-summary {
+            background: #e8f4fd;
+            border: 1px solid #b3d9ff;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .missing-mode {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+        .has-mode {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 调试LocalStorage会话数据</h1>
+
+        <div class="session-summary" id="sessionSummary">
+            <p><strong>状态：</strong>点击"检查会话数据"来分析localStorage中的会话数据</p>
+        </div>
+
+        <button class="button" onclick="checkSessionData()">🔍 检查会话数据</button>
+        <button class="button" onclick="addModeToSessions()">🔧 修复缺失的mode字段</button>
+        <button class="button" onclick="clearAllSessions()">🗑️ 清空所有会话（用于测试）</button>
+        <button class="button" onclick="createTestSession()">➕ 创建测试会话</button>
+
+        <h2>📊 会话数据详情</h2>
+        <div class="json-display" id="jsonDisplay">
+            点击上面的按钮来显示数据...
+        </div>
+
+        <h2>📝 操作日志</h2>
+        <div class="json-display" id="operationLog">
+        </div>
+    </div>
+
+    <script>
+        function log(message) {
+            const logElement = document.getElementById('operationLog');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.textContent += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function checkSessionData() {
+            log('开始检查localStorage会话数据...');
+
+            const sessionsData = localStorage.getItem('claude_mcp_sessions');
+            const jsonDisplay = document.getElementById('jsonDisplay');
+            const sessionSummary = document.getElementById('sessionSummary');
+
+            if (!sessionsData) {
+                log('未找到localStorage中的会话数据');
+                jsonDisplay.textContent = '未找到localStorage中的会话数据';
+                sessionSummary.innerHTML = '<p><strong>状态：</strong><span class="missing-mode">未找到任何会话数据</span></p>';
+                return;
+            }
+
+            try {
+                const sessions = JSON.parse(sessionsData);
+                const sessionKeys = Object.keys(sessions);
+
+                log(`找到 ${sessionKeys.length} 个会话`);
+
+                let sessionsWithMode = 0;
+                let sessionsWithoutMode = 0;
+                let sessionsWithoutSettings = 0;
+
+                const analysis = [];
+
+                sessionKeys.forEach(sessionId => {
+                    const session = sessions[sessionId];
+                    const hasSettings = !!session.settings;
+                    const hasMode = hasSettings && !!session.settings.mode;
+
+                    if (!hasSettings) {
+                        sessionsWithoutSettings++;
+                        analysis.push(`❌ 会话 ${session.name || sessionId}: 没有settings字段`);
+                    } else if (!hasMode) {
+                        sessionsWithoutMode++;
+                        analysis.push(`⚠️  会话 ${session.name || sessionId}: 有settings但没有mode字段`);
+                    } else {
+                        sessionsWithMode++;
+                        analysis.push(`✅ 会话 ${session.name || sessionId}: mode = ${session.settings.mode}`);
+                    }
+                });
+
+                sessionSummary.innerHTML = `
+                    <p><strong>总会话数：</strong>${sessionKeys.length}</p>
+                    <p><strong>有mode字段：</strong><span class="has-mode">${sessionsWithMode}</span></p>
+                    <p><strong>缺少mode字段：</strong><span class="missing-mode">${sessionsWithoutMode}</span></p>
+                    <p><strong>缺少settings：</strong><span class="missing-mode">${sessionsWithoutSettings}</span></p>
+                `;
+
+                jsonDisplay.textContent = JSON.stringify(sessions, null, 2);
+
+                analysis.forEach(msg => log(msg));
+
+                if (sessionsWithoutMode > 0 || sessionsWithoutSettings > 0) {
+                    log(`发现 ${sessionsWithoutMode + sessionsWithoutSettings} 个会话需要修复`);
+                } else {
+                    log('所有会话都有正确的mode字段！');
+                }
+
+            } catch (error) {
+                log(`解析会话数据失败: ${error.message}`);
+                jsonDisplay.textContent = `解析错误: ${error.message}`;
+            }
+        }
+
+        function addModeToSessions() {
+            log('开始修复缺失的mode字段...');
+
+            const sessionsData = localStorage.getItem('claude_mcp_sessions');
+            if (!sessionsData) {
+                log('没有找到会话数据，无需修复');
+                return;
+            }
+
+            try {
+                const sessions = JSON.parse(sessionsData);
+                let updated = 0;
+
+                Object.keys(sessions).forEach(sessionId => {
+                    const session = sessions[sessionId];
+                    let needsUpdate = false;
+
+                    // 如果没有settings，创建默认settings
+                    if (!session.settings) {
+                        session.settings = {
+                            mode: 'general',
+                            systemPrompt: '你是一个非常实用的助手。',
+                            maxTurns: 20,
+                            allowedTools: ['WebSearch', 'Read']
+                        };
+                        needsUpdate = true;
+                        log(`为会话 ${session.name || sessionId} 创建了默认settings`);
+                    }
+                    // 如果有settings但没有mode
+                    else if (!session.settings.mode) {
+                        session.settings.mode = 'general';
+                        needsUpdate = true;
+                        log(`为会话 ${session.name || sessionId} 添加了mode字段: general`);
+                    }
+
+                    // 确保其他字段存在
+                    if (!session.settings.systemPrompt) {
+                        session.settings.systemPrompt = '你是一个非常实用的助手。';
+                        needsUpdate = true;
+                    }
+                    if (!session.settings.maxTurns) {
+                        session.settings.maxTurns = 20;
+                        needsUpdate = true;
+                    }
+                    if (!session.settings.allowedTools) {
+                        session.settings.allowedTools = ['WebSearch', 'Read'];
+                        needsUpdate = true;
+                    }
+
+                    if (needsUpdate) {
+                        updated++;
+                    }
+                });
+
+                if (updated > 0) {
+                    // 保存回localStorage
+                    localStorage.setItem('claude_mcp_sessions', JSON.stringify(sessions));
+                    log(`成功修复 ${updated} 个会话，已保存到localStorage`);
+
+                    // 重新检查以验证修复
+                    setTimeout(checkSessionData, 100);
+                } else {
+                    log('所有会话都已有正确的mode字段，无需修复');
+                }
+
+            } catch (error) {
+                log(`修复失败: ${error.message}`);
+            }
+        }
+
+        function clearAllSessions() {
+            if (confirm('确定要清空所有会话数据吗？此操作不可撤销！')) {
+                localStorage.removeItem('claude_mcp_sessions');
+                log('已清空所有会话数据');
+                checkSessionData();
+            }
+        }
+
+        function createTestSession() {
+            log('创建测试会话...');
+
+            const sessionsData = localStorage.getItem('claude_mcp_sessions') || '{}';
+            const sessions = JSON.parse(sessionsData);
+
+            const sessionId = `session_${Date.now()}_test`;
+            const session = {
+                id: sessionId,
+                name: `测试会话 ${Date.now()}`,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                messages: [],
+                settings: {
+                    mode: 'general',
+                    systemPrompt: '你是一个非常实用的助手。',
+                    maxTurns: 20,
+                    allowedTools: ['WebSearch', 'Read']
+                }
+            };
+
+            sessions[sessionId] = session;
+            localStorage.setItem('claude_mcp_sessions', JSON.stringify(sessions));
+
+            log(`已创建测试会话: ${session.name}`);
+            checkSessionData();
+        }
+
+        // 页面加载时自动检查
+        window.addEventListener('load', () => {
+            log('页面加载完成，开始自动检查...');
+            checkSessionData();
+        });
+    </script>
+</body>
+</html>

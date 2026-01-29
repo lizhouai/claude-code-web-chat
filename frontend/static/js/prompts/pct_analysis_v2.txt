@@ -1,0 +1,378 @@
+Please analyze case [CASE_NUMBER] using the following framework, focusing on immediately actionable solutions with comprehensive keyword discovery:
+
+## Case Type Detection and Setup
+**Auto-detect case type from case number pattern:**
+- **PCT cases**: PCT-12345 → Use project = PCT  
+- **CPDT cases**: CPDT-67890 → Use project = CPDT
+- **Dynamic variables**: Set [CASE_TYPE] and [PROJECT_KEY] based on detection
+
+**Implementation Steps:**
+1. **Parse case number**: Extract case type prefix (PCT/CPDT) from [CASE_NUMBER]
+2. **Set dynamic variables**:
+   - [CASE_TYPE] = "PCT" or "CPDT"
+   - [PROJECT_KEY] = "PCT" or "CPDT" 
+3. **Apply throughout analysis**: Use variables in all JQL queries, outputs, and file naming
+4. **Maintain unified logic**: Same analysis framework works for both case types
+
+## Tool Usage Priority
+**Primary (Local):** Use mcp__confluence-local__* tools first
+**Fallback (Standard):** Use mcp__confluence__* tools with cloudId="trendmicro.atlassian.net"
+
+## Phase 1: Rapid Case Diagnosis
+
+### 1. Core Information Extraction
+- Get case details: fields="summary,status,priority,description,assignee,reporter,created,updated,comment,customfield_10815"
+- **Enhanced keyword extraction**: Focus on extracting core module names (strip extensions/versions)
+  - Example: C:\Windows\System32\TmLWE\TmUmSnsr64\1.0.0.1152\TmUmSnsr64.dll → TmUmSnsr
+- Extract ALL unique terms, acronyms, codes, and identifiers from case content
+- Capture customer environment details (OS version, product version, affected systems)
+- Analyze current status and blocking points
+
+**After completing Phase 1A, display:**
+
+📊 CONSOLE OUTPUT - Phase 1A Results:
+```
+=== [CASE_TYPE] Case [CASE_NUMBER] - Initial Analysis ===
+Case Status: [Status]
+Priority: [Priority Level]
+Product: [Product Name & Version]
+Environment: [OS/Platform Details]
+Error Pattern: [Primary Error Code/Message]
+Keywords Extracted: [List of key terms found]
+Current Assignee: [Name]
+RD Team: [Team Name from customfield_10815]
+```
+
+### 2. Processing History Analysis
+- Analyze comment history for executed actions and effectiveness
+- Identify untried solutions and workflow patterns
+- Track assignee mentions and handoff patterns
+
+**After completing Phase 1B, display:**
+
+📋 CONSOLE OUTPUT - Phase 1B Results:
+```
+=== Processing History Summary ===
+Total Comments: [X]
+Attempted Solutions: [List of tried methods]
+Untried Approaches: [List of potential next steps]
+Handoff Pattern: [Assignment history]
+Current Blocking Point: [What's preventing resolution]
+```
+
+## Phase 2: Multi-Dimensional Search Strategy
+
+### 1. Enhanced Tiered Keyword Search Strategy
+
+**Module/Component Search (Primary - limit=5 each):**
+```
+Layer 1 - Core Module: jql="text ~ '[module_base_name]' AND project = [PROJECT_KEY] ORDER BY updated DESC"
+Example: TmUmSnsr (stripped from TmUmSnsr64.dll v1.0.0.1152)
+
+Layer 2 - Expand Status: jql="text ~ '[module_base_name]' AND project = [PROJECT_KEY] ORDER BY updated DESC" 
+(Include Active cases if Layer 1 results <3)
+
+Layer 3 - Module Variants: jql="text ~ '[module_variant]' AND project = [PROJECT_KEY] ORDER BY updated DESC"
+Example: TmUmSnsr64, TmUmSnsr32
+```
+
+**Traditional Pattern Search (Secondary - limit=5 each):**
+```
+a) Technical Pattern: jql="text ~ '[primary_error_code]' AND project = [PROJECT_KEY] AND status = Resolved ORDER BY updated DESC" fields="summary,status,assignee,customfield_10815"
+b) Context Keywords: jql="text ~ '[extracted_keyword]' AND project = [PROJECT_KEY] ORDER BY updated DESC" fields="summary,status,assignee,customfield_10815"
+c) Broad Symptom: jql="text ~ '[general_symptom]' AND project = [PROJECT_KEY] AND status = Resolved ORDER BY priority DESC" fields="summary,status,assignee,customfield_10815"
+```
+
+**After completing Phase 2A searches, display:**
+
+🔍 CONSOLE OUTPUT - Phase 2A Search Results:
+```
+=== Enhanced Similar Case Discovery ===
+Module Core Search (Layer 1): [X] cases found
+- [CASE_TYPE]-[NUM1]: [Brief description] - RD Team: [Team] - Resolution time: [X hours]
+- [CASE_TYPE]-[NUM2]: [Brief description] - RD Team: [Team] - Resolution time: [X hours]
+
+Module Variants Search (Layer 3): [Y] additional cases found
+- [CASE_TYPE]-[NUM3]: [Related module variant] - RD Team: [Team] - [Success rate/confidence]
+
+Traditional Pattern Search: [Z] cases found
+- Technical Pattern: [A] cases - Common RD Teams: [Team1, Team2]
+- Context Keywords: [B] cases - Common RD Teams: [Team1, Team2]
+- Broad Symptoms: [C] cases - Common RD Teams: [Team1, Team2]
+
+Search Effectiveness: 
+- Most effective: [Core module name vs full filename]
+- Status scope: [Resolved vs All cases impact]
+```
+
+### 2. Documentation Search (limit=3)
+```
+Confluence: "[product_name] [error_code] troubleshooting"
+```
+
+**After completing Phase 2B documentation search, display:**
+
+📚 CONSOLE OUTPUT - Phase 2B Knowledge Base:
+```
+=== Documentation Found ===
+Troubleshooting Guides: [X] relevant docs
+- [Doc Title 1]: [Relevance score] - [Key sections]
+- [Doc Title 2]: [Relevance score] - [Key sections]
+
+Diagnostic Tools: [Available tools for this case]
+Known Issues: [Any matching KB articles]
+```
+
+### 3. Enhanced Keyword Extraction Protocol
+
+**Module Name Search Priority (Based on TmUmSnsr Case Learning):**
+1. **Extract core module names**: Remove file extensions, version numbers, bit variants
+   - Example: TmUmSnsr64.dll v1.0.0.1152 → TmUmSnsr
+2. **Avoid over-specific searches**: Don't use full paths or exact versions initially
+3. **Progressive expansion**: Start broad, then add variants if needed
+4. **Include Active cases**: Don't limit to Resolved only
+
+**Traditional Extraction:**
+- Primary: Technical error codes and product names  
+- Secondary: Customer-specific terms and environment identifiers
+- Tertiary: General symptom patterns
+- Apply iterative refinement if initial searches yield <3 relevant cases
+
+**Key Learning**: Module base names (TmUmSnsr) are more effective than full filenames (TmUmSnsr64.dll) for finding similar cases across different versions and configurations.
+
+## Output Format
+
+**IMPORTANT: Display analysis results in console FIRST, then generate HTML file.**
+
+1. **Console Output:** Display complete analysis results immediately in console for quick review
+2. **HTML File:** Generate detailed HTML report with clickable links and professional styling
+
+**After completing all analysis phases, display:**
+
+🎯 CONSOLE OUTPUT - Final Summary:
+```
+=== [CASE_TYPE] [CASE_NUMBER] Analysis Complete ===
+Resolution Confidence: [High/Medium/Low] based on [X] similar cases
+Recommended RD Team: [Team Name] - [Justification]
+Team Contact Priority: [Primary/Secondary teams if cross-component]
+Recommended Solution: [Primary approach with highest success rate]
+Estimated Resolution Time: [X hours]
+Immediate Next Steps: [Top 3 actions to take]
+Escalation Needed: [Yes/No - with reason]
+```
+
+**Finally, create HTML analysis report:**
+
+**IMPORTANT: Generate HTML in multiple smaller chunks to avoid timeout:**
+
+1. **Create HTML header and summary section first** (Write tool)
+2. **Add technical analysis section** (Edit tool - append)
+3. **Append similar cases section** (Edit tool - append)
+4. **Append execution checklist section** (Edit tool - append)
+5. **Finalize with closing tags** (Edit tool - append)
+
+**If API error occurs:** Resume from where it stopped using Edit tool to append remaining content
+
+**Alternative approach if timeout persists:**
+- Generate simplified HTML with key findings only
+- Or output structured markdown that can be converted to HTML later
+
+**Output filename:** `[CASE_TYPE]_[CASE_NUMBER]_analysis_[YYYYMMDD_HHMMSS].html` (e.g., PCT_12345_analysis_20250816_162018.html or CPDT_67890_analysis_20250816_162018.html)
+
+**IMPORTANT FILE CREATION RULE:**
+- ALWAYS use current timestamp for filename to ensure uniqueness
+- NEVER overwrite existing files - each analysis should create a NEW file
+- If HTML generation times out, create a simplified version with core findings
+
+## HTML CODE FORMATTING REQUIREMENTS
+
+**CRITICAL: Ensure proper line breaks in HTML code blocks:**
+
+When generating HTML code blocks, follow these formatting rules:
+
+1. **Use `<pre>` tag instead of `<div>` for code blocks**
+2. **Preserve line breaks using actual newlines, not spaces**
+3. **Each command should be on a separate line**
+4. **Use empty lines between sections for better readability**
+5. **Add proper CSS for code block rendering**
+
+**Example correct format:**
+```html
+<pre class="code-block">
+# Service Status Verification
+sc query "Trend Micro Endpoint Basecamp"
+sc query cloudendpointservice
+sc query tmkmsnsr
+
+# Network Connectivity Test
+curl -v https://api-us-1.xbc.trendmicro.com/api/healthcheck
+
+# Log Collection
+powershell -ExecutionPolicy Bypass -File XdrEsDebug.ps1
+
+# Process Monitoring
+tasklist /svc | findstr /i trend
+</pre>
+```
+
+**Required CSS for proper rendering:**
+```css
+.code-block { 
+    background: #2d3748; 
+    color: #e2e8f0; 
+    padding: 15px; 
+    border-radius: 5px; 
+    font-family: 'Courier New', monospace; 
+    overflow-x: auto; 
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    line-height: 1.4;
+}
+```
+
+**DO NOT USE:**
+- Single line code blocks without breaks
+- `<div>` tags for multi-line code
+- Spaces instead of actual line breaks
+
+### Case Quick Summary
+- Case ID: [[CASE_TYPE] Number]
+- Keywords Extracted: [Complete list]
+- Search Terms Used: [Effective keywords]
+- Problem Classification: [Type]
+- Product/Component: [Specific Product and Version]
+- Impact Scope: [Affected Systems/Users]
+- Urgency: [P0/P1/P2/P3] - [Business Impact]
+- Resolution Confidence: [High/Medium/Low] - [Based on X Similar Cases]
+- Environment: [OS/Platform/Version]
+
+### Technical Analysis
+- Primary Error: [Specific Error Code/Message]
+- Components: [System Component List with Versions]
+- Failure Mode: [Crash/Performance/Installation/etc.]
+- Trigger Conditions: [When/How issue occurs]
+
+### Similar Case References (Top 3-5)
+- Search Results: Technical [X], Context [Y], Symptom [Z] cases found
+- Resolved Cases:
+  - [[CASE_TYPE]-XXXXX](link) - [Problem] - RD Team: [Team] - Resolution: [Key Solution] - Time: [Duration]
+- Active Cases:
+  - [[CASE_TYPE]-ZZZZZ](link) - [Status] - RD Team: [Team] - [Attempted Methods] - [Blocking Point]
+
+### Knowledge Base Quick Reference
+- Troubleshooting Guide: [Title](URL) - [Section Link]
+- Diagnostic Tool: [Tool Documentation](URL)
+- Known Issues: [KB Article](URL) - [Workaround Status]
+
+### Immediate Execution Checklist
+
+#### Phase 1: Data Collection (0-30 min)
+
+**System Information Collection:**
+```bash
+systeminfo > sysinfo.txt
+msinfo32 /report msinfo.txt
+```
+*Source: [Troubleshooting Guide Title](https://trendmicro.atlassian.net/wiki/...) - Section: System Information Collection*
+
+**Event Log Analysis:**
+```bash
+wevtutil epl System system.evtx
+wevtutil epl Application app.evtx
+```
+*Source: [[CASE_TYPE]-XXXXX](https://trendmicro.atlassian.net/browse/[CASE_TYPE]-XXXXX) - Comment by [Engineer] on [Date]*
+
+**Process Information:**
+```bash
+tasklist /svc > processes.txt
+```
+
+**Product-Specific Logs:**
+```bash
+[Specific log paths and diagnostic commands based on product]
+```
+*Source: [Product Documentation](https://trendmicro.atlassian.net/wiki/...) - Diagnostic Procedures*
+
+#### Phase 2: Initial Diagnosis (30 min - 2 hours)
+- Search for [specific_error_code] in logs  
+  *Source: [[CASE_TYPE]-YYYYY](https://trendmicro.atlassian.net/browse/[CASE_TYPE]-YYYYY) - Resolution approach*
+- Verify product version and service status  
+  *Source: [Standard Troubleshooting Guide](https://trendmicro.atlassian.net/wiki/...) - Verification Checklist*
+- Test core functionality and connectivity  
+  *Source: [[CASE_TYPE]-ZZZZZ](https://trendmicro.atlassian.net/browse/[CASE_TYPE]-ZZZZZ) - Diagnostic steps by [Engineer]*
+- Check resource usage patterns  
+  *Source: [Performance Analysis Guide](https://trendmicro.atlassian.net/wiki/...) - Resource Monitoring*
+
+#### Phase 3: Solution Implementation (2-8 hours)
+- **Solution A**: [X% confidence]
+  - Steps: [1, 2, 3]
+  - Expected Result: [What should happen]
+  - Validation: [How to confirm success]
+  - Rollback: [How to undo]
+  - *Source: [[CASE_TYPE]-XXXXX](https://trendmicro.atlassian.net/browse/[CASE_TYPE]-XXXXX) - Successful resolution by [Engineer] on [Date]*
+
+- **Solution B** (Alternative): [Y% confidence]
+  - *Source: [[CASE_TYPE]-AAAAAA](https://trendmicro.atlassian.net/browse/[CASE_TYPE]-AAAAAA) - Alternative approach*
+
+- **Solution C** (Workaround): [Z% confidence]
+  - *Source: [KB Article](https://trendmicro.atlassian.net/wiki/...) - Temporary mitigation*
+
+### Core Diagnostic Commands
+
+**System Health Checks:**
+```bash
+sfc /scannow
+dism /online /cleanup-image /restorehealth
+```
+*Source: [Windows Troubleshooting Guide](https://trendmicro.atlassian.net/wiki/...) - System Integrity Checks*
+
+**Network Diagnostics:**
+```bash
+ipconfig /all
+netstat -an
+nslookup [domain]
+```
+*Source: [NETWORK-001](https://trendmicro.atlassian.net/browse/NETWORK-001) - Network diagnostic approach*
+
+**Performance Analysis:**
+```bash
+perfmon /report
+wmic cpu get loadpercentage /value
+```
+*Source: [Performance Analysis Guide](https://trendmicro.atlassian.net/wiki/...) - Resource Monitoring Commands*
+
+**Log Analysis:**
+```bash
+findstr /i "error\|exception\|fail" [logfile]
+findstr /i "[error_code]" [logfile]
+```
+*Source: [Log Analysis Best Practices](https://trendmicro.atlassian.net/wiki/...) - Error Pattern Search*
+
+### Data Collection Priorities
+1. **Critical:** Error logs, system config, product version
+2. **Important:** Performance counters, network logs, recent changes
+3. **Optional:** Backup status, security logs, software inventory
+
+### Escalation Matrix
+| Condition | Action | Timeline |
+|-----------|---------|----------|
+| No similar cases | Escalate to Product Team | Immediately |
+| Customer urgent request | Emergency Response | 1 hour |
+| Multiple solutions failed | Technical Deep Dive | 4 hours |
+| Root cause unclear (8h+) | Senior Engineer Review | Next day |
+
+### Analysis Summary
+- Completion Time: [Timestamp]
+- Priority: [1-Emergency/2-Urgent/3-High/4-Normal]
+- Recommended RD Team: [Team Name] - [Justification]
+- Team Contact Priority: [Primary/Secondary teams if cross-component]
+- Estimated Resolution: [X hours]
+- Resources Needed: [Expertise/tools required]
+- Next Review: [Progress check timestamp]
+- Keyword Effectiveness: [Most effective search strategies]
+
+## Optimization Notes
+- Use selective field retrieval and limited search results
+- Apply focused queries over broad searches
+- Prioritize critical vs. optional information
+- Document effective search patterns for future cases

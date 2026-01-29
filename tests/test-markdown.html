@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown渲染测试</title>
+    <link rel="stylesheet" href="/static/css/chat.css">
+    <!-- Markdown渲染库 (本地化) -->
+    <script src="/static/libs/marked.min.js"></script>
+    <!-- 代码高亮库 (本地化) -->
+    <script src="/static/libs/prism-core.min.js"></script>
+    <script src="/static/libs/prism-autoloader.min.js"></script>
+    <link href="/static/libs/prism.css" rel="stylesheet">
+    <style>
+        body {
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+        }
+        .test-title {
+            color: #667eea;
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 5px;
+        }
+        .markdown-source {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+        .markdown-rendered {
+            border: 1px dashed #ccc;
+            padding: 15px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Markdown渲染测试</h1>
+        <p>这个页面用于测试新的Markdown渲染功能是否正常工作。</p>
+        
+        <!-- 测试基础格式 -->
+        <div class="test-section">
+            <div class="test-title">基础文本格式</div>
+            <div class="markdown-source" id="basic-source">**粗体文本** 和 *斜体文本*
+普通文本和`行内代码`
+还有[链接文本](https://example.com)</div>
+            <div class="markdown-rendered message-content" id="basic-rendered"></div>
+        </div>
+        
+        <!-- 测试标题 -->
+        <div class="test-section">
+            <div class="test-title">标题测试</div>
+            <div class="markdown-source" id="header-source"># 一级标题
+## 二级标题
+### 三级标题</div>
+            <div class="markdown-rendered message-content" id="header-rendered"></div>
+        </div>
+        
+        <!-- 测试列表 -->
+        <div class="test-section">
+            <div class="test-title">列表测试</div>
+            <div class="markdown-source" id="list-source">- 无序列表项1
+- 无序列表项2
+  - 嵌套项
+- 无序列表项3
+
+1. 有序列表项1
+2. 有序列表项2
+3. 有序列表项3</div>
+            <div class="markdown-rendered message-content" id="list-rendered"></div>
+        </div>
+        
+        <!-- 测试代码块 -->
+        <div class="test-section">
+            <div class="test-title">代码块测试</div>
+            <div class="markdown-source" id="code-source">```javascript
+function formatMessage(content) {
+    return marked.parse(content);
+}
+```
+
+```python
+def hello_world():
+    print("Hello, World!")
+    return "success"
+```</div>
+            <div class="markdown-rendered message-content" id="code-rendered"></div>
+        </div>
+        
+        <!-- 测试引用 -->
+        <div class="test-section">
+            <div class="test-title">引用测试</div>
+            <div class="markdown-source" id="quote-source">> 这是一个引用块
+> 可以包含多行内容
+> 
+> 甚至可以包含**格式化**文本</div>
+            <div class="markdown-rendered message-content" id="quote-rendered"></div>
+        </div>
+        
+        <!-- 测试表格 -->
+        <div class="test-section">
+            <div class="test-title">表格测试</div>
+            <div class="markdown-source" id="table-source">| 功能 | 状态 | 备注 |
+|------|------|------|
+| Markdown渲染 | ✅ | 已完成 |
+| 代码高亮 | ✅ | 使用Prism.js |
+| 表格支持 | ✅ | 测试中 |</div>
+            <div class="markdown-rendered message-content" id="table-rendered"></div>
+        </div>
+        
+        <div style="margin-top: 40px; text-align: center;">
+            <button onclick="runTests()" style="background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px;">
+                🚀 运行测试
+            </button>
+        </div>
+        
+        <div id="test-results" style="margin-top: 20px;"></div>
+    </div>
+    
+    <script src="/static/js/markdown-formatter.js"></script>
+    <script>
+        function runTests() {
+            console.log('开始Markdown渲染测试...');
+            
+            const tests = [
+                'basic',
+                'header', 
+                'list',
+                'code',
+                'quote',
+                'table'
+            ];
+            
+            const results = [];
+            
+            tests.forEach(testName => {
+                const sourceEl = document.getElementById(`${testName}-source`);
+                const renderedEl = document.getElementById(`${testName}-rendered`);
+                
+                if (sourceEl && renderedEl) {
+                    const sourceContent = sourceEl.textContent;
+                    
+                    try {
+                        let renderedContent;
+                        if (window.markdownFormatter) {
+                            renderedContent = window.markdownFormatter.formatMessage(sourceContent);
+                            renderedEl.innerHTML = renderedContent;
+                            results.push(`✅ ${testName}: 成功`);
+                        } else {
+                            results.push(`❌ ${testName}: Markdown格式化器未加载`);
+                        }
+                    } catch (error) {
+                        results.push(`❌ ${testName}: ${error.message}`);
+                        console.error(`测试${testName}失败:`, error);
+                    }
+                } else {
+                    results.push(`❌ ${testName}: 找不到测试元素`);
+                }
+            });
+            
+            // 显示测试结果
+            const resultsEl = document.getElementById('test-results');
+            resultsEl.innerHTML = `
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                    <h3>🧪 测试结果</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        ${results.map(result => `<li style="margin: 8px 0; font-family: monospace;">${result}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+            
+            console.log('测试结果:', results);
+        }
+        
+        // 页面加载完成后自动运行测试
+        window.addEventListener('load', () => {
+            setTimeout(runTests, 1000);
+        });
+    </script>
+</body>
+</html>

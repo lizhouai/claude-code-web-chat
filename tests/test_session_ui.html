@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会话管理测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #5a6fd8;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+        }
+        .sessions-display {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .session-item-test {
+            padding: 10px;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            background: white;
+        }
+        .session-item-test.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 会话管理系统测试</h1>
+        
+        <div class="test-section">
+            <h3>🔧 基础功能测试</h3>
+            <button onclick="testCreateSession()">创建会话</button>
+            <button onclick="testRenameSession()">重命名会话</button>
+            <button onclick="testDeleteSession()">删除会话</button>
+            <button onclick="testSwitchSession()">切换会话</button>
+            <button onclick="refreshSessions()">刷新会话列表</button>
+            <div id="basicTestLog" class="log"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>💾 存储功能测试</h3>
+            <button onclick="testLocalStorageSave()">测试localStorage保存</button>
+            <button onclick="testLocalStorageLoad()">测试localStorage加载</button>
+            <button onclick="clearLocalStorage()">清空localStorage</button>
+            <div id="storageTestLog" class="log"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📝 消息管理测试</h3>
+            <button onclick="testAddMessage()">添加测试消息</button>
+            <button onclick="testUpdateMessages()">更新会话消息</button>
+            <button onclick="testLoadMessages()">加载会话消息</button>
+            <div id="messageTestLog" class="log"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📋 当前会话状态</h3>
+            <div id="sessionsDisplay" class="sessions-display">
+                <div class="session-loading">初始化中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟SessionManager类的简化版本
+        class TestSessionManager {
+            constructor() {
+                this.sessions = new Map();
+                this.currentSessionId = null;
+                this.defaultSessionName = '新对话';
+                this.maxSessionNameLength = 50;
+                this.onSessionChange = (sessionId) => {
+                    log('基础功能', `会话切换到: ${sessionId}`);
+                };
+            }
+            
+            async init() {
+                log('基础功能', '初始化会话管理器...');
+                this.loadSessionsFromLocalStorage();
+                this.renderSessionsDisplay();
+                
+                if (this.sessions.size === 0) {
+                    await this.createSession();
+                } else {
+                    const firstSessionId = this.sessions.keys().next().value;
+                    this.setCurrentSession(firstSessionId);
+                }
+                log('基础功能', '会话管理器初始化完成');
+            }
+            
+            async createSession(name = null) {
+                const sessionId = this.generateSessionId();
+                const sessionName = name || this.generateDefaultSessionName();
+                
+                const session = {
+                    id: sessionId,
+                    name: sessionName,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    messages: [],
+                    settings: {
+                        systemPrompt: 'You are a helpful assistant',
+                        maxTurns: 5,
+                        allowedTools: ['WebSearch', 'Read']
+                    }
+                };
+                
+                this.sessions.set(sessionId, session);
+                this.saveSessionToLocalStorage(session);
+                this.renderSessionsDisplay();
+                this.setCurrentSession(sessionId);
+                
+                log('基础功能', `创建会话: ${sessionName} (${sessionId})`);
+                return sessionId;
+            }
+            
+            async deleteSession(sessionId) {
+                if (!this.sessions.has(sessionId)) {
+                    throw new Error('会话不存在');
+                }
+                
+                if (this.sessions.size <= 1) {
+                    throw new Error('不能删除最后一个会话');
+                }
+                
+                const session = this.sessions.get(sessionId);
+                this.sessions.delete(sessionId);
+                this.removeSessionFromLocalStorage(sessionId);
+                
+                if (this.currentSessionId === sessionId) {
+                    const firstSessionId = this.sessions.keys().next().value;
+                    this.setCurrentSession(firstSessionId);
+                }
+                
+                this.renderSessionsDisplay();
+                log('基础功能', `删除会话: ${session.name} (${sessionId})`);
+            }
+            
+            async renameSession(sessionId, newName) {
+                if (!this.sessions.has(sessionId)) {
+                    throw new Error('会话不存在');
+                }
+                
+                const trimmedName = newName.trim();
+                if (!trimmedName) {
+                    throw new Error('会话名称不能为空');
+                }
+                
+                if (trimmedName.length > this.maxSessionNameLength) {
+                    throw new Error(`会话名称不能超过${this.maxSessionNameLength}个字符`);
+                }
+                
+                const session = this.sessions.get(sessionId);
+                const oldName = session.name;
+                session.name = trimmedName;
+                session.updatedAt = new Date().toISOString();
+                
+                this.saveSessionToLocalStorage(session);
+                this.renderSessionsDisplay();
+                
+                log('基础功能', `重命名会话: "${oldName}" -> "${trimmedName}"`);
+            }
+            
+            setCurrentSession(sessionId) {
+                if (!this.sessions.has(sessionId)) {
+                    throw new Error('会话不存在');
+                }
+                
+                this.currentSessionId = sessionId;
+                this.renderSessionsDisplay();
+                this.onSessionChange(sessionId);
+            }
+            
+            getCurrentSession() {
+                if (!this.currentSessionId) {
+                    return null;
+                }
+                return this.sessions.get(this.currentSessionId);
+            }
+            
+            async updateCurrentSessionMessages(messages) {
+                const session = this.getCurrentSession();
+                if (!session) {
+                    throw new Error('没有活动会话');
+                }
+                
+                session.messages = messages;
+                session.updatedAt = new Date().toISOString();
+                this.saveSessionToLocalStorage(session);
+                
+                log('消息管理', `更新会话消息: ${messages.length} 条`);
+            }
+            
+            loadSessionsFromLocalStorage() {
+                try {
+                    const sessionsData = localStorage.getItem('claude_mcp_sessions');
+                    if (sessionsData) {
+                        const sessions = JSON.parse(sessionsData);
+                        this.sessions.clear();
+                        for (const [id, sessionData] of Object.entries(sessions)) {
+                            this.sessions.set(id, sessionData);
+                        }
+                        log('存储功能', `从localStorage加载了 ${this.sessions.size} 个会话`);
+                    }
+                } catch (error) {
+                    log('存储功能', `从localStorage加载会话失败: ${error.message}`);
+                }
+            }
+            
+            saveSessionToLocalStorage(session) {
+                try {
+                    const sessionsData = localStorage.getItem('claude_mcp_sessions') || '{}';
+                    const sessions = JSON.parse(sessionsData);
+                    sessions[session.id] = session;
+                    localStorage.setItem('claude_mcp_sessions', JSON.stringify(sessions));
+                    log('存储功能', `保存会话到localStorage: ${session.name}`);
+                } catch (error) {
+                    log('存储功能', `保存会话到localStorage失败: ${error.message}`);
+                }
+            }
+            
+            removeSessionFromLocalStorage(sessionId) {
+                try {
+                    const sessionsData = localStorage.getItem('claude_mcp_sessions') || '{}';
+                    const sessions = JSON.parse(sessionsData);
+                    delete sessions[sessionId];
+                    localStorage.setItem('claude_mcp_sessions', JSON.stringify(sessions));
+                    log('存储功能', `从localStorage删除会话: ${sessionId}`);
+                } catch (error) {
+                    log('存储功能', `从localStorage删除会话失败: ${error.message}`);
+                }
+            }
+            
+            generateSessionId() {
+                return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            }
+            
+            generateDefaultSessionName() {
+                const count = this.sessions.size + 1;
+                return `${this.defaultSessionName} ${count}`;
+            }
+            
+            renderSessionsDisplay() {
+                const container = document.getElementById('sessionsDisplay');
+                if (!container) return;
+                
+                container.innerHTML = '';
+                
+                if (this.sessions.size === 0) {
+                    container.innerHTML = '<div class="session-loading">没有会话</div>';
+                    return;
+                }
+                
+                const sortedSessions = Array.from(this.sessions.values())
+                    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+                
+                for (const session of sortedSessions) {
+                    const sessionItem = document.createElement('div');
+                    sessionItem.className = `session-item-test ${session.id === this.currentSessionId ? 'active' : ''}`;
+                    sessionItem.innerHTML = `
+                        <div><strong>${session.name}</strong> (${session.id.substr(-8)})</div>
+                        <div>创建: ${new Date(session.createdAt).toLocaleString()}</div>
+                        <div>消息数: ${session.messages.length}</div>
+                    `;
+                    container.appendChild(sessionItem);
+                }
+            }
+        }
+        
+        // 全局实例
+        let sessionManager;
+        
+        // 日志函数
+        function log(category, message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${category}: ${message}`;
+            console.log(logMessage);
+            
+            const logContainers = {
+                '基础功能': 'basicTestLog',
+                '存储功能': 'storageTestLog', 
+                '消息管理': 'messageTestLog'
+            };
+            
+            const containerId = logContainers[category];
+            if (containerId) {
+                const container = document.getElementById(containerId);
+                if (container) {
+                    container.innerHTML += logMessage + '\\n';
+                    container.scrollTop = container.scrollHeight;
+                }
+            }
+        }
+        
+        // 测试函数
+        async function testCreateSession() {
+            try {
+                const name = prompt('输入会话名称（留空使用默认名称）:');
+                await sessionManager.createSession(name || undefined);
+            } catch (error) {
+                log('基础功能', `创建会话失败: ${error.message}`);
+            }
+        }
+        
+        async function testRenameSession() {
+            const sessions = Array.from(sessionManager.sessions.values());
+            if (sessions.length === 0) {
+                log('基础功能', '没有可重命名的会话');
+                return;
+            }
+            
+            const sessionNames = sessions.map(s => `${s.name} (${s.id.substr(-8)})`);
+            const choice = prompt(`选择要重命名的会话（输入序号 0-${sessions.length-1}）:\\n${sessionNames.join('\\n')}`);
+            const index = parseInt(choice);
+            
+            if (isNaN(index) || index < 0 || index >= sessions.length) {
+                log('基础功能', '无效的会话选择');
+                return;
+            }
+            
+            const newName = prompt('输入新名称:');
+            if (newName) {
+                try {
+                    await sessionManager.renameSession(sessions[index].id, newName);
+                } catch (error) {
+                    log('基础功能', `重命名失败: ${error.message}`);
+                }
+            }
+        }
+        
+        async function testDeleteSession() {
+            const sessions = Array.from(sessionManager.sessions.values());
+            if (sessions.length <= 1) {
+                log('基础功能', '不能删除最后一个会话');
+                return;
+            }
+            
+            const sessionNames = sessions.map(s => `${s.name} (${s.id.substr(-8)})`);
+            const choice = prompt(`选择要删除的会话（输入序号 0-${sessions.length-1}）:\\n${sessionNames.join('\\n')}`);
+            const index = parseInt(choice);
+            
+            if (isNaN(index) || index < 0 || index >= sessions.length) {
+                log('基础功能', '无效的会话选择');
+                return;
+            }
+            
+            if (confirm(`确定要删除会话"${sessions[index].name}"吗？`)) {
+                try {
+                    await sessionManager.deleteSession(sessions[index].id);
+                } catch (error) {
+                    log('基础功能', `删除失败: ${error.message}`);
+                }
+            }
+        }
+        
+        function testSwitchSession() {
+            const sessions = Array.from(sessionManager.sessions.values());
+            if (sessions.length === 0) {
+                log('基础功能', '没有可切换的会话');
+                return;
+            }
+            
+            const sessionNames = sessions.map(s => `${s.name} (${s.id.substr(-8)})`);
+            const choice = prompt(`选择要切换的会话（输入序号 0-${sessions.length-1}）:\\n${sessionNames.join('\\n')}`);
+            const index = parseInt(choice);
+            
+            if (isNaN(index) || index < 0 || index >= sessions.length) {
+                log('基础功能', '无效的会话选择');
+                return;
+            }
+            
+            try {
+                sessionManager.setCurrentSession(sessions[index].id);
+            } catch (error) {
+                log('基础功能', `切换失败: ${error.message}`);
+            }
+        }
+        
+        function refreshSessions() {
+            sessionManager.renderSessionsDisplay();
+            log('基础功能', '刷新会话显示');
+        }
+        
+        function testLocalStorageSave() {
+            const testSession = {
+                id: 'test_' + Date.now(),
+                name: '测试会话',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                messages: [
+                    { role: 'user', content: '测试消息1', timestamp: new Date().toISOString() },
+                    { role: 'assistant', content: '测试回复1', timestamp: new Date().toISOString() }
+                ],
+                settings: { systemPrompt: 'Test', maxTurns: 5, allowedTools: ['WebSearch'] }
+            };
+            
+            sessionManager.saveSessionToLocalStorage(testSession);
+        }
+        
+        function testLocalStorageLoad() {
+            sessionManager.loadSessionsFromLocalStorage();
+            sessionManager.renderSessionsDisplay();
+        }
+        
+        function clearLocalStorage() {
+            localStorage.removeItem('claude_mcp_sessions');
+            log('存储功能', '清空localStorage');
+        }
+        
+        async function testAddMessage() {
+            const session = sessionManager.getCurrentSession();
+            if (!session) {
+                log('消息管理', '没有活动会话');
+                return;
+            }
+            
+            const content = prompt('输入测试消息内容:') || '这是一条测试消息';
+            const message = {
+                role: Math.random() > 0.5 ? 'user' : 'assistant',
+                content: content,
+                timestamp: new Date().toISOString()
+            };
+            
+            session.messages.push(message);
+            await sessionManager.updateCurrentSessionMessages(session.messages);
+            sessionManager.renderSessionsDisplay();
+        }
+        
+        async function testUpdateMessages() {
+            const messages = [
+                { role: 'user', content: '用户消息1', timestamp: new Date().toISOString() },
+                { role: 'assistant', content: '助手回复1', timestamp: new Date().toISOString() },
+                { role: 'user', content: '用户消息2', timestamp: new Date().toISOString() },
+                { role: 'assistant', content: '助手回复2', timestamp: new Date().toISOString() }
+            ];
+            
+            try {
+                await sessionManager.updateCurrentSessionMessages(messages);
+                sessionManager.renderSessionsDisplay();
+            } catch (error) {
+                log('消息管理', `更新消息失败: ${error.message}`);
+            }
+        }
+        
+        function testLoadMessages() {
+            const session = sessionManager.getCurrentSession();
+            if (!session) {
+                log('消息管理', '没有活动会话');
+                return;
+            }
+            
+            log('消息管理', `当前会话消息数: ${session.messages.length}`);
+            session.messages.forEach((msg, index) => {
+                log('消息管理', `消息 ${index + 1}: [${msg.role}] ${msg.content.substring(0, 50)}...`);
+            });
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', async () => {
+            log('基础功能', '页面加载完成，开始初始化...');
+            sessionManager = new TestSessionManager();
+            await sessionManager.init();
+        });
+    </script>
+</body>
+</html>

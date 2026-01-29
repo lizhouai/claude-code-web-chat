@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会话刷新修复测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-results {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .current-session {
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 会话刷新修复测试</h1>
+
+    <div class="test-section">
+        <h2>问题描述</h2>
+        <p>在当前会话进行网页刷新后，页面会跳转到其他会话，而不是保持在当前会话。</p>
+    </div>
+
+    <div class="test-section">
+        <h2>修复方案</h2>
+        <ul>
+            <li>在localStorage中保存当前选中的会话ID</li>
+            <li>在初始化时优先恢复上次选中的会话</li>
+            <li>如果上次的会话不存在，选择最近更新的会话</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>测试SessionManager修复</h2>
+        <div id="testResults"></div>
+        <button onclick="runTests()">运行测试</button>
+        <button onclick="clearTestData()">清除测试数据</button>
+    </div>
+
+    <div class="test-section">
+        <h2>手动测试步骤</h2>
+        <ol>
+            <li>打开主页面，创建或选择一个会话</li>
+            <li>记住当前会话名称: <span id="currentSessionName" class="current-session">未知</span></li>
+            <li>进行一些对话操作</li>
+            <li>刷新页面（F5 或 Ctrl+R）</li>
+            <li>检查是否还在同一个会话中</li>
+        </ol>
+        <button onclick="getCurrentSession()">获取当前会话</button>
+        <button onclick="simulateRefresh()">模拟刷新测试</button>
+    </div>
+
+    <script src="/static/js/sessionManager.js"></script>
+    <script>
+        // 简化的SessionManager测试
+        class TestSessionManager {
+            constructor() {
+                this.sessions = new Map();
+                this.currentSessionId = null;
+            }
+
+            // 模拟原始的SessionManager方法
+            saveCurrentSessionId(sessionId) {
+                try {
+                    localStorage.setItem('claude_mcp_current_session', sessionId);
+                    return true;
+                } catch (error) {
+                    console.error('保存当前会话ID失败:', error);
+                    return false;
+                }
+            }
+
+            getLastSelectedSessionId() {
+                try {
+                    return localStorage.getItem('claude_mcp_current_session');
+                } catch (error) {
+                    console.error('获取上次选中会话ID失败:', error);
+                    return null;
+                }
+            }
+
+            setCurrentSession(sessionId) {
+                if (!this.sessions.has(sessionId)) {
+                    throw new Error('会话不存在');
+                }
+                this.currentSessionId = sessionId;
+                this.saveCurrentSessionId(sessionId);
+            }
+
+            restoreLastSelectedSession() {
+                const lastSessionId = this.getLastSelectedSessionId();
+
+                if (lastSessionId && this.sessions.has(lastSessionId)) {
+                    console.log('恢复上次选中的会话:', lastSessionId);
+                    this.currentSessionId = lastSessionId;
+                    return lastSessionId;
+                }
+
+                const sortedSessions = Array.from(this.sessions.values())
+                    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+                if (sortedSessions.length > 0) {
+                    const mostRecentSessionId = sortedSessions[0].id;
+                    console.log('选择最近更新的会话:', mostRecentSessionId);
+                    this.currentSessionId = mostRecentSessionId;
+                    this.saveCurrentSessionId(mostRecentSessionId);
+                    return mostRecentSessionId;
+                }
+                return null;
+            }
+
+            // 测试辅助方法
+            createTestSession(id, name, updatedAt) {
+                const session = {
+                    id: id,
+                    name: name,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: updatedAt || new Date().toISOString(),
+                    messages: []
+                };
+                this.sessions.set(id, session);
+                return session;
+            }
+        }
+
+        let testManager = new TestSessionManager();
+
+        function runTests() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '';
+
+            const tests = [
+                testSaveAndRestore,
+                testRestoreNonExistentSession,
+                testRestoreMostRecent,
+                testEmptySessions
+            ];
+
+            tests.forEach((test, index) => {
+                try {
+                    const result = test();
+                    appendResult(resultsDiv, `测试 ${index + 1}: ${test.name}`, result.success, result.message);
+                } catch (error) {
+                    appendResult(resultsDiv, `测试 ${index + 1}: ${test.name}`, false, `错误: ${error.message}`);
+                }
+            });
+        }
+
+        function testSaveAndRestore() {
+            // 清理
+            localStorage.removeItem('claude_mcp_current_session');
+            testManager = new TestSessionManager();
+
+            // 创建测试会话
+            testManager.createTestSession('session1', '会话1', '2024-01-01T10:00:00Z');
+            testManager.createTestSession('session2', '会话2', '2024-01-01T11:00:00Z');
+
+            // 设置当前会话
+            testManager.setCurrentSession('session1');
+
+            // 检查保存
+            const saved = testManager.getLastSelectedSessionId();
+            if (saved !== 'session1') {
+                return { success: false, message: `保存失败，期望 session1，实际 ${saved}` };
+            }
+
+            // 模拟刷新后恢复
+            testManager.currentSessionId = null;
+            const restored = testManager.restoreLastSelectedSession();
+
+            if (restored !== 'session1') {
+                return { success: false, message: `恢复失败，期望 session1，实际 ${restored}` };
+            }
+
+            return { success: true, message: '保存和恢复当前会话成功' };
+        }
+
+        function testRestoreNonExistentSession() {
+            // 清理
+            testManager = new TestSessionManager();
+            localStorage.setItem('claude_mcp_current_session', 'nonexistent');
+
+            // 创建测试会话
+            testManager.createTestSession('session1', '会话1', '2024-01-01T10:00:00Z');
+            testManager.createTestSession('session2', '会话2', '2024-01-01T11:00:00Z');
+
+            // 尝试恢复不存在的会话
+            const restored = testManager.restoreLastSelectedSession();
+
+            if (restored !== 'session2') { // 应该选择最近的
+                return { success: false, message: `应该选择最近的会话 session2，实际 ${restored}` };
+            }
+
+            return { success: true, message: '不存在的会话正确回退到最近会话' };
+        }
+
+        function testRestoreMostRecent() {
+            // 清理
+            localStorage.removeItem('claude_mcp_current_session');
+            testManager = new TestSessionManager();
+
+            // 创建带有不同更新时间的会话
+            testManager.createTestSession('session1', '会话1', '2024-01-01T10:00:00Z');
+            testManager.createTestSession('session2', '会话2', '2024-01-01T12:00:00Z');
+            testManager.createTestSession('session3', '会话3', '2024-01-01T11:00:00Z');
+
+            // 恢复会话（应该选择最近更新的）
+            const restored = testManager.restoreLastSelectedSession();
+
+            if (restored !== 'session2') {
+                return { success: false, message: `应该选择最近更新的 session2，实际 ${restored}` };
+            }
+
+            return { success: true, message: '正确选择最近更新的会话' };
+        }
+
+        function testEmptySessions() {
+            // 清理
+            localStorage.removeItem('claude_mcp_current_session');
+            testManager = new TestSessionManager();
+
+            // 没有会话的情况
+            const restored = testManager.restoreLastSelectedSession();
+
+            if (restored !== null) {
+                return { success: false, message: `空会话应该返回 null，实际 ${restored}` };
+            }
+
+            return { success: true, message: '空会话列表正确处理' };
+        }
+
+        function appendResult(container, title, success, message) {
+            const div = document.createElement('div');
+            div.className = `test-results ${success ? 'success' : 'error'}`;
+            div.innerHTML = `<strong>${title}</strong>: ${message}`;
+            container.appendChild(div);
+        }
+
+        function clearTestData() {
+            localStorage.removeItem('claude_mcp_current_session');
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '<div class="test-results info">测试数据已清除</div>';
+        }
+
+        function getCurrentSession() {
+            const currentSession = localStorage.getItem('claude_mcp_current_session');
+            document.getElementById('currentSessionName').textContent = currentSession || '无';
+
+            const resultsDiv = document.getElementById('testResults');
+            appendResult(resultsDiv, '当前保存的会话ID', true, currentSession || '无');
+        }
+
+        function simulateRefresh() {
+            const currentSession = localStorage.getItem('claude_mcp_current_session');
+
+            if (!currentSession) {
+                const resultsDiv = document.getElementById('testResults');
+                appendResult(resultsDiv, '模拟刷新', false, '没有保存的会话，请先在主页面选择一个会话');
+                return;
+            }
+
+            // 模拟页面刷新后的恢复过程
+            const resultsDiv = document.getElementById('testResults');
+            appendResult(resultsDiv, '模拟刷新', true, `页面刷新后应该恢复到会话: ${currentSession}`);
+        }
+
+        // 页面加载时显示当前状态
+        window.addEventListener('load', () => {
+            getCurrentSession();
+        });
+    </script>
+</body>
+</html>

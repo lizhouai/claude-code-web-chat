@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会话兼容性测试</title>
+</head>
+<body>
+    <h1>会话兼容性测试</h1>
+    <div id="results"></div>
+
+    <script>
+        // 模拟历史会话数据（没有mode字段）
+        function createLegacySessionData() {
+            return {
+                'session-1': {
+                    id: 'session-1',
+                    name: '历史会话1',
+                    createdAt: '2024-01-01T10:00:00Z',
+                    updatedAt: '2024-01-01T10:00:00Z',
+                    settings: {
+                        systemPrompt: '你是一个有用的助手',
+                        maxTurns: 10,
+                        allowedTools: ['web_search']
+                        // 注意：没有mode字段
+                    },
+                    messages: []
+                },
+                'session-2': {
+                    id: 'session-2',
+                    name: '历史会话2',
+                    createdAt: '2024-01-02T10:00:00Z',
+                    updatedAt: '2024-01-02T10:00:00Z',
+                    // 注意：完全没有settings字段
+                    messages: []
+                }
+            };
+        }
+
+        // 设置测试数据
+        function setupTestData() {
+            const legacyData = createLegacySessionData();
+            localStorage.setItem('claude_mcp_sessions', JSON.stringify(legacyData));
+            console.log('已设置测试用的历史会话数据');
+            return legacyData;
+        }
+
+        // 检查兼容性处理结果
+        function checkCompatibilityResults() {
+            const sessionsData = localStorage.getItem('claude_mcp_sessions');
+            if (!sessionsData) {
+                return '没有找到会话数据';
+            }
+
+            const sessions = JSON.parse(sessionsData);
+            const results = [];
+
+            for (const [id, session] of Object.entries(sessions)) {
+                const hasSettings = !!session.settings;
+                const hasMode = hasSettings && !!session.settings.mode;
+
+                results.push({
+                    id,
+                    name: session.name,
+                    hasSettings,
+                    hasMode,
+                    mode: hasMode ? session.settings.mode : 'N/A',
+                    settings: session.settings
+                });
+            }
+
+            return results;
+        }
+
+        // 运行测试
+        function runTest() {
+            const resultsDiv = document.getElementById('results');
+
+            // 1. 设置测试数据
+            resultsDiv.innerHTML += '<h2>1. 设置测试数据</h2>';
+            const originalData = setupTestData();
+            resultsDiv.innerHTML += '<pre>' + JSON.stringify(originalData, null, 2) + '</pre>';
+
+            // 2. 模拟页面加载后的兼容性检查
+            resultsDiv.innerHTML += '<h2>2. 加载页面后检查结果</h2>';
+            resultsDiv.innerHTML += '<p>请打开浏览器控制台，刷新页面，然后查看会话是否自动添加了mode字段。</p>';
+
+            // 3. 手动检查当前状态
+            resultsDiv.innerHTML += '<h2>3. 当前localStorage状态</h2>';
+            const currentResults = checkCompatibilityResults();
+            resultsDiv.innerHTML += '<pre>' + JSON.stringify(currentResults, null, 2) + '</pre>';
+
+            // 4. 添加按钮来重新检查
+            const button = document.createElement('button');
+            button.textContent = '重新检查localStorage状态';
+            button.onclick = () => {
+                const newResults = checkCompatibilityResults();
+                const newDiv = document.createElement('div');
+                newDiv.innerHTML = '<h3>更新后的状态:</h3><pre>' + JSON.stringify(newResults, null, 2) + '</pre>';
+                resultsDiv.appendChild(newDiv);
+            };
+            resultsDiv.appendChild(button);
+        }
+
+        // 页面加载完成后运行测试
+        document.addEventListener('DOMContentLoaded', runTest);
+    </script>
+</body>
+</html>

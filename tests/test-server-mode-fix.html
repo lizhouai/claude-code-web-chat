@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>服务器Mode字段测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .log {
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 服务器端Mode字段测试</h1>
+        <p>测试服务器是否正确保存和同步mode字段到data/目录</p>
+
+        <div class="test-section">
+            <h3>📋 测试控制</h3>
+            <button onclick="runFullTest()">运行完整测试</button>
+            <button onclick="testCreateSession()">测试创建新会话</button>
+            <button onclick="testUpdateSession()">测试更新会话mode</button>
+            <button onclick="testListSessions()">测试列出会话</button>
+            <button onclick="clearLog()">清空日志</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 测试结果</h3>
+            <div id="testResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 详细日志</h3>
+            <div id="testLog" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('testLog');
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+            logElement.innerHTML += `${timestamp} ${prefix} ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(`[${type}] ${message}`);
+        }
+
+        function clearLog() {
+            document.getElementById('testLog').innerHTML = '';
+            document.getElementById('testResults').innerHTML = '';
+            testResults = [];
+        }
+
+        function updateResults() {
+            const resultsElement = document.getElementById('testResults');
+            const passedTests = testResults.filter(r => r.passed).length;
+            const totalTests = testResults.length;
+
+            let html = `<p><strong>测试进度: ${passedTests}/${totalTests} 通过</strong></p>`;
+
+            testResults.forEach(result => {
+                const status = result.passed ? '✅' : '❌';
+                const className = result.passed ? 'success' : 'error';
+                html += `<div class="${className}">${status} ${result.name}: ${result.message}</div>`;
+            });
+
+            resultsElement.innerHTML = html;
+        }
+
+        function addTestResult(name, passed, message) {
+            testResults.push({ name, passed, message });
+            updateResults();
+        }
+
+        // API调用函数
+        async function apiCall(method, url, data = null) {
+            try {
+                const options = {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+
+                const response = await fetch(url, options);
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${result.detail || 'Unknown error'}`);
+                }
+
+                return result;
+            } catch (error) {
+                log(`API调用失败: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // 测试创建新会话
+        async function testCreateSession() {
+            log('开始测试创建新会话...');
+
+            try {
+                // 创建新会话
+                const newSession = await apiCall('POST', '/api/v1/sessions/', {
+                    name: `Mode测试会话_${Date.now()}`
+                });
+
+                log(`创建会话成功: ${newSession.id}`);
+                log(`会话设置: ${JSON.stringify(newSession.settings, null, 2)}`);
+
+                // 检查是否有mode字段
+                if (newSession.settings && newSession.settings.mode) {
+                    addTestResult('创建会话mode字段', true, `新会话包含mode字段: ${newSession.settings.mode}`);
+                    log(`✅ 新会话成功包含mode字段: ${newSession.settings.mode}`, 'success');
+                } else {
+                    addTestResult('创建会话mode字段', false, '新会话缺少mode字段');
+                    log('❌ 新会话缺少mode字段', 'error');
+                }
+
+                return newSession;
+            } catch (error) {
+                addTestResult('创建会话mode字段', false, `创建失败: ${error.message}`);
+                log(`❌ 创建会话失败: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // 测试更新会话mode
+        async function testUpdateSession() {
+            log('开始测试更新会话mode...');
+
+            try {
+                // 先创建一个会话
+                const session = await testCreateSession();
+
+                // 更新会话的mode
+                const updatedSession = {
+                    ...session,
+                    settings: {
+                        ...session.settings,
+                        mode: 'coding_assistant'  // 更改为coding_assistant模式
+                    },
+                    updatedAt: new Date().toISOString()
+                };
+
+                // 发送更新请求
+                const result = await apiCall('PUT', `/api/v1/sessions/${session.id}`, updatedSession);
+
+                log(`更新会话成功: ${result.id}`);
+                log(`更新后设置: ${JSON.stringify(result.settings, null, 2)}`);
+
+                // 检查mode是否正确更新
+                if (result.settings && result.settings.mode === 'coding_assistant') {
+                    addTestResult('更新会话mode字段', true, `会话mode成功更新为: ${result.settings.mode}`);
+                    log(`✅ 会话mode成功更新为: ${result.settings.mode}`, 'success');
+                } else {
+                    addTestResult('更新会话mode字段', false, `mode更新失败，期望: coding_assistant，实际: ${result.settings?.mode}`);
+                    log(`❌ mode更新失败，期望: coding_assistant，实际: ${result.settings?.mode}`, 'error');
+                }
+
+                return result;
+            } catch (error) {
+                addTestResult('更新会话mode字段', false, `更新失败: ${error.message}`);
+                log(`❌ 更新会话失败: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // 测试列出会话
+        async function testListSessions() {
+            log('开始测试列出会话...');
+
+            try {
+                const sessions = await apiCall('GET', '/api/v1/sessions/list');
+
+                log(`获取到 ${sessions.length} 个会话`);
+
+                let sessionsWithMode = 0;
+                let sessionsWithoutMode = 0;
+
+                sessions.forEach((session, index) => {
+                    const hasMode = session.settings && session.settings.mode;
+                    if (hasMode) {
+                        sessionsWithMode++;
+                        log(`会话 ${index + 1}: ${session.name} - mode: ${session.settings.mode}`);
+                    } else {
+                        sessionsWithoutMode++;
+                        log(`会话 ${index + 1}: ${session.name} - 缺少mode字段`, 'error');
+                    }
+                });
+
+                if (sessionsWithoutMode === 0) {
+                    addTestResult('列出会话mode字段', true, `所有 ${sessions.length} 个会话都包含mode字段`);
+                    log(`✅ 所有会话都包含mode字段`, 'success');
+                } else {
+                    addTestResult('列出会话mode字段', false, `${sessionsWithoutMode} 个会话缺少mode字段`);
+                    log(`❌ ${sessionsWithoutMode} 个会话缺少mode字段`, 'error');
+                }
+
+                return sessions;
+            } catch (error) {
+                addTestResult('列出会话mode字段', false, `获取失败: ${error.message}`);
+                log(`❌ 获取会话列表失败: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // 运行完整测试
+        async function runFullTest() {
+            clearLog();
+            log('🚀 开始运行完整测试套件...');
+
+            try {
+                // 1. 测试创建新会话
+                await testCreateSession();
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // 2. 测试更新会话mode
+                await testUpdateSession();
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // 3. 测试列出会话
+                await testListSessions();
+
+                log('✅ 完整测试套件执行完成', 'success');
+
+                // 显示总结
+                const passedTests = testResults.filter(r => r.passed).length;
+                const totalTests = testResults.length;
+
+                if (passedTests === totalTests) {
+                    log('🎉 所有测试都通过了！服务器端mode字段支持正常工作。', 'success');
+                } else {
+                    log(`⚠️ ${totalTests - passedTests} 个测试失败，需要进一步检查。`, 'error');
+                }
+
+            } catch (error) {
+                log(`❌ 测试套件执行失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 页面加载时显示信息
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🔧 服务器端Mode字段测试工具已加载');
+            log('点击"运行完整测试"开始测试服务器是否正确支持mode字段');
+        });
+    </script>
+</body>
+</html>

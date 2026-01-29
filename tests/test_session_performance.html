@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会话切换性能测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover:not(:disabled) {
+            background: #5a6fd8;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .performance-metrics {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        .metric.good {
+            color: #28a745;
+        }
+        .metric.warning {
+            color: #ffc107;
+        }
+        .metric.bad {
+            color: #dc3545;
+        }
+        .session-list-demo {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .session-item-demo {
+            padding: 10px;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .session-item-demo:hover {
+            background: #f8f9fa;
+            transform: translateX(2px);
+        }
+        .session-item-demo.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .chat-demo {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            background: #fafafa;
+        }
+        .message-demo {
+            padding: 8px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            background: white;
+            border-left: 3px solid #667eea;
+        }
+        .loading-indicator {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-style: italic;
+        }
+        .test-controls {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>⚡ 会话切换性能测试</h1>
+        
+        <div class="test-controls">
+            <h3>测试控制</h3>
+            <label>
+                测试会话数量: 
+                <select id="sessionCount">
+                    <option value="5">5个会话</option>
+                    <option value="10" selected>10个会话</option>
+                    <option value="25">25个会话</option>
+                    <option value="50">50个会话</option>
+                    <option value="100">100个会话</option>
+                </select>
+            </label>
+            <label style="margin-left: 20px;">
+                每个会话消息数: 
+                <select id="messageCount">
+                    <option value="5">5条消息</option>
+                    <option value="20" selected>20条消息</option>
+                    <option value="50">50条消息</option>
+                    <option value="100">100条消息</option>
+                </select>
+            </label>
+            <button onclick="generateTestData()">生成测试数据</button>
+            <button onclick="runPerformanceTest()">运行性能测试</button>
+            <button onclick="clearAll()">清空数据</button>
+        </div>
+        
+        <div class="performance-metrics">
+            <h3>性能指标</h3>
+            <div class="metric" id="switchTimeMetric">
+                <span>平均切换时间:</span>
+                <span>-</span>
+            </div>
+            <div class="metric" id="renderTimeMetric">
+                <span>平均渲染时间:</span>
+                <span>-</span>
+            </div>
+            <div class="metric" id="domOperationsMetric">
+                <span>DOM操作次数:</span>
+                <span>-</span>
+            </div>
+            <div class="metric" id="memoryUsageMetric">
+                <span>内存使用变化:</span>
+                <span>-</span>
+            </div>
+        </div>
+        
+        <div class="test-grid">
+            <div class="test-section">
+                <h3>📋 会话列表演示</h3>
+                <div id="sessionListDemo" class="session-list-demo">
+                    <div class="loading-indicator">点击"生成测试数据"开始</div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <h3>💬 聊天区域演示</h3>
+                <div id="chatDemo" class="chat-demo">
+                    <div class="loading-indicator">选择一个会话查看消息</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔍 详细测试结果</h3>
+            <div id="testResults" class="performance-metrics" style="height: 200px; overflow-y: auto;">
+                <div class="loading-indicator">运行测试后查看详细结果</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let testSessions = [];
+        let currentSessionId = null;
+        let performanceData = [];
+        
+        // 模拟优化后的SessionManager方法
+        class OptimizedSessionManager {
+            constructor() {
+                this.sessions = new Map();
+                this.currentSessionId = null;
+            }
+            
+            setCurrentSession(sessionId) {
+                if (this.currentSessionId === sessionId) {
+                    return; // 优化：避免重复切换
+                }
+                
+                const startTime = performance.now();
+                
+                this.currentSessionId = sessionId;
+                this.updateSessionListActiveState(); // 优化：只更新状态，不重新渲染
+                
+                const endTime = performance.now();
+                return endTime - startTime;
+            }
+            
+            updateSessionListActiveState() {
+                const sessionItems = document.querySelectorAll('.session-item-demo');
+                sessionItems.forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                if (this.currentSessionId) {
+                    const currentItem = document.querySelector(`[data-session-id="${this.currentSessionId}"]`);
+                    if (currentItem) {
+                        currentItem.classList.add('active');
+                    }
+                }
+            }
+        }
+        
+        const sessionManager = new OptimizedSessionManager();
+        
+        function generateTestData() {
+            const sessionCount = parseInt(document.getElementById('sessionCount').value);
+            const messageCount = parseInt(document.getElementById('messageCount').value);
+            
+            console.log(`生成测试数据: ${sessionCount}个会话, 每个${messageCount}条消息`);
+            
+            testSessions = [];
+            sessionManager.sessions.clear();
+            
+            for (let i = 0; i < sessionCount; i++) {
+                const sessionId = `test_session_${i}`;
+                const messages = [];
+                
+                for (let j = 0; j < messageCount; j++) {
+                    messages.push({
+                        role: j % 2 === 0 ? 'user' : 'assistant',
+                        content: `这是第${j + 1}条测试消息，内容包含一些随机文本用于模拟真实对话场景。`,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+                
+                const session = {
+                    id: sessionId,
+                    name: `测试会话 ${i + 1}`,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    messages: messages,
+                    settings: {
+                        systemPrompt: 'You are a helpful assistant',
+                        maxTurns: 5,
+                        allowedTools: ['WebSearch', 'Read']
+                    }
+                };
+                
+                testSessions.push(session);
+                sessionManager.sessions.set(sessionId, session);
+            }
+            
+            renderSessionList();
+            log(`生成了${sessionCount}个会话，总计${sessionCount * messageCount}条消息`);
+        }
+        
+        function renderSessionList() {
+            const container = document.getElementById('sessionListDemo');
+            container.innerHTML = '';
+            
+            testSessions.forEach(session => {
+                const item = document.createElement('div');
+                item.className = `session-item-demo ${session.id === currentSessionId ? 'active' : ''}`;
+                item.dataset.sessionId = session.id;
+                item.innerHTML = `
+                    <div><strong>${session.name}</strong></div>
+                    <div style="font-size: 11px; color: #666;">${session.messages.length} 条消息</div>
+                `;
+                
+                item.addEventListener('click', () => {
+                    switchToSession(session.id);
+                });
+                
+                container.appendChild(item);
+            });
+        }
+        
+        function switchToSession(sessionId) {
+            const startTime = performance.now();
+            
+            // 模拟优化后的切换逻辑
+            const switchTime = sessionManager.setCurrentSession(sessionId);
+            currentSessionId = sessionId;
+            
+            // 模拟消息加载（批量渲染）
+            const renderStartTime = performance.now();
+            renderMessages(sessionId);
+            const renderTime = performance.now() - renderStartTime;
+            
+            const totalTime = performance.now() - startTime;
+            
+            // 记录性能数据
+            performanceData.push({
+                sessionId,
+                switchTime: switchTime || 0,
+                renderTime,
+                totalTime,
+                timestamp: new Date().toISOString()
+            });
+            
+            console.log(`切换到会话 ${sessionId}: 总耗时 ${totalTime.toFixed(2)}ms (切换: ${(switchTime || 0).toFixed(2)}ms, 渲染: ${renderTime.toFixed(2)}ms)`);
+        }
+        
+        function renderMessages(sessionId) {
+            const session = testSessions.find(s => s.id === sessionId);
+            if (!session) return;
+            
+            const chatDemo = document.getElementById('chatDemo');
+            
+            // 优化：使用DocumentFragment批量操作
+            const fragment = document.createDocumentFragment();
+            
+            session.messages.forEach(message => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message-demo';
+                messageDiv.innerHTML = `
+                    <strong>${message.role}:</strong> ${message.content}
+                `;
+                fragment.appendChild(messageDiv);
+            });
+            
+            chatDemo.innerHTML = '';
+            chatDemo.appendChild(fragment);
+            chatDemo.scrollTop = chatDemo.scrollHeight;
+        }
+        
+        async function runPerformanceTest() {
+            if (testSessions.length === 0) {
+                alert('请先生成测试数据');
+                return;
+            }
+            
+            console.log('开始性能测试...');
+            performanceData = [];
+            
+            const testResults = document.getElementById('testResults');
+            testResults.innerHTML = '<div class="loading-indicator">正在运行性能测试...</div>';
+            
+            // 测试所有会话切换
+            for (let i = 0; i < testSessions.length; i++) {
+                const session = testSessions[i];
+                
+                // 添加小延迟模拟真实用户操作
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
+                switchToSession(session.id);
+            }
+            
+            // 分析性能数据
+            analyzePerformance();
+        }
+        
+        function analyzePerformance() {
+            if (performanceData.length === 0) return;
+            
+            const switchTimes = performanceData.map(d => d.switchTime);
+            const renderTimes = performanceData.map(d => d.renderTime);
+            const totalTimes = performanceData.map(d => d.totalTime);
+            
+            const avgSwitchTime = average(switchTimes);
+            const avgRenderTime = average(renderTimes);
+            const avgTotalTime = average(totalTimes);
+            
+            const maxSwitchTime = Math.max(...switchTimes);
+            const maxRenderTime = Math.max(...renderTimes);
+            const maxTotalTime = Math.max(...totalTimes);
+            
+            // 更新性能指标显示
+            updateMetric('switchTimeMetric', `${avgSwitchTime.toFixed(2)}ms`, avgSwitchTime);
+            updateMetric('renderTimeMetric', `${avgRenderTime.toFixed(2)}ms`, avgRenderTime);
+            updateMetric('domOperationsMetric', `${testSessions.length} 次切换`, null);
+            
+            // 显示详细结果
+            const testResults = document.getElementById('testResults');
+            testResults.innerHTML = `
+                <h4>性能测试结果</h4>
+                <div class="metric"><span>测试会话数:</span><span>${testSessions.length}</span></div>
+                <div class="metric"><span>平均切换时间:</span><span>${avgSwitchTime.toFixed(2)}ms</span></div>
+                <div class="metric"><span>平均渲染时间:</span><span>${avgRenderTime.toFixed(2)}ms</span></div>
+                <div class="metric"><span>平均总时间:</span><span>${avgTotalTime.toFixed(2)}ms</span></div>
+                <div class="metric"><span>最慢切换:</span><span>${maxSwitchTime.toFixed(2)}ms</span></div>
+                <div class="metric"><span>最慢渲染:</span><span>${maxRenderTime.toFixed(2)}ms</span></div>
+                <div class="metric"><span>最慢总时间:</span><span>${maxTotalTime.toFixed(2)}ms</span></div>
+                <hr>
+                <h5>性能评估:</h5>
+                <div class="metric ${getPerformanceClass(avgTotalTime)}">
+                    <span>总体性能:</span>
+                    <span>${getPerformanceText(avgTotalTime)}</span>
+                </div>
+                <div style="margin-top: 10px; font-size: 11px;">
+                    <strong>优化建议:</strong><br>
+                    • 切换时间 < 5ms: 优秀<br>
+                    • 渲染时间 < 50ms: 良好<br>
+                    • 总时间 < 100ms: 用户感知流畅
+                </div>
+            `;
+            
+            log(`性能测试完成: 平均总时间 ${avgTotalTime.toFixed(2)}ms`);
+        }
+        
+        function updateMetric(elementId, value, time) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.querySelector('span:last-child').textContent = value;
+                if (time !== null) {
+                    element.className = `metric ${getPerformanceClass(time)}`;
+                }
+            }
+        }
+        
+        function getPerformanceClass(time) {
+            if (time < 20) return 'good';
+            if (time < 100) return 'warning';
+            return 'bad';
+        }
+        
+        function getPerformanceText(time) {
+            if (time < 20) return '优秀 (< 20ms)';
+            if (time < 100) return '良好 (< 100ms)';
+            return '需要优化 (> 100ms)';
+        }
+        
+        function average(numbers) {
+            return numbers.reduce((a, b) => a + b, 0) / numbers.length;
+        }
+        
+        function clearAll() {
+            testSessions = [];
+            currentSessionId = null;
+            performanceData = [];
+            sessionManager.sessions.clear();
+            
+            document.getElementById('sessionListDemo').innerHTML = 
+                '<div class="loading-indicator">点击"生成测试数据"开始</div>';
+            document.getElementById('chatDemo').innerHTML = 
+                '<div class="loading-indicator">选择一个会话查看消息</div>';
+            document.getElementById('testResults').innerHTML = 
+                '<div class="loading-indicator">运行测试后查看详细结果</div>';
+            
+            // 重置性能指标
+            ['switchTimeMetric', 'renderTimeMetric', 'domOperationsMetric', 'memoryUsageMetric'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.querySelector('span:last-child').textContent = '-';
+                    element.className = 'metric';
+                }
+            });
+            
+            log('已清空所有测试数据');
+        }
+        
+        function log(message) {
+            console.log(`[${new Date().toLocaleTimeString()}] ${message}`);
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            log('性能测试工具已加载');
+        });
+    </script>
+</body>
+</html>

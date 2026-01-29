@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会话同步系统测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #5a6fd8;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+        }
+        .status-panel {
+            background: #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        .sync-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .sync-indicator.ready {
+            background: #28a745;
+        }
+        .sync-indicator.syncing {
+            background: #ffc107;
+            animation: pulse 1s infinite;
+        }
+        .sync-indicator.error {
+            background: #dc3545;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .data-display {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔄 会话同步系统测试</h1>
+        
+        <div class="status-panel">
+            <h3>系统状态</h3>
+            <div class="status-item">
+                <span>同步状态:</span>
+                <span><span id="syncIndicator" class="sync-indicator ready"></span><span id="syncStatus">就绪</span></span>
+            </div>
+            <div class="status-item">
+                <span>本地会话数:</span>
+                <span id="localSessionCount">0</span>
+            </div>
+            <div class="status-item">
+                <span>服务器状态:</span>
+                <span id="serverStatus">检查中...</span>
+            </div>
+            <div class="status-item">
+                <span>最后同步:</span>
+                <span id="lastSyncTime">从未</span>
+            </div>
+        </div>
+        
+        <div class="test-grid">
+            <div class="test-section">
+                <h3>📦 localStorage 操作</h3>
+                <button onclick="createLocalSession()">创建本地会话</button>
+                <button onclick="updateLocalSession()">更新本地会话</button>
+                <button onclick="deleteLocalSession()">删除本地会话</button>
+                <button onclick="clearLocalStorage()">清空localStorage</button>
+                <button onclick="showLocalData()">显示本地数据</button>
+                <div id="localLog" class="log"></div>
+            </div>
+            
+            <div class="test-section">
+                <h3>🌐 服务器操作</h3>
+                <button onclick="checkServerStatus()">检查服务器状态</button>
+                <button onclick="uploadToServer()">上传到服务器</button>
+                <button onclick="downloadFromServer()">从服务器下载</button>
+                <button onclick="clearServerData()">清空服务器</button>
+                <button onclick="showServerData()">显示服务器数据</button>
+                <div id="serverLog" class="log"></div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔄 同步操作</h3>
+            <button onclick="testManualSync()">手动同步</button>
+            <button onclick="testMergeConflict()">测试冲突合并</button>
+            <button onclick="testBatchSync()">批量同步</button>
+            <button onclick="simulateOfflineSync()">模拟离线同步</button>
+            <button onclick="resetAll()">重置所有数据</button>
+            <div id="syncLog" class="log"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 数据显示</h3>
+            <div class="test-grid">
+                <div>
+                    <h4>localStorage 数据:</h4>
+                    <div id="localDataDisplay" class="data-display">暂无数据</div>
+                </div>
+                <div>
+                    <h4>服务器数据:</h4>
+                    <div id="serverDataDisplay" class="data-display">暂无数据</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟API基础URL
+        const API_BASE = '/api/v1/sessions';
+        
+        // 日志函数
+        function log(category, message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            console.log(logMessage);
+            
+            const logContainers = {
+                'local': 'localLog',
+                'server': 'serverLog',
+                'sync': 'syncLog'
+            };
+            
+            const containerId = logContainers[category];
+            if (containerId) {
+                const container = document.getElementById(containerId);
+                if (container) {
+                    container.innerHTML += logMessage + '\\n';
+                    container.scrollTop = container.scrollHeight;
+                }
+            }
+        }
+        
+        // 更新状态显示
+        function updateStatus() {
+            const localData = getLocalStorageData();
+            document.getElementById('localSessionCount').textContent = Object.keys(localData).length;
+            
+            updateDataDisplays();
+        }
+        
+        function updateSyncStatus(status, text) {
+            const indicator = document.getElementById('syncIndicator');
+            const statusText = document.getElementById('syncStatus');
+            
+            indicator.className = `sync-indicator ${status}`;
+            statusText.textContent = text;
+            
+            if (status === 'ready') {
+                document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString();
+            }
+        }
+        
+        function updateDataDisplays() {
+            // 显示localStorage数据
+            const localData = getLocalStorageData();
+            document.getElementById('localDataDisplay').textContent = 
+                JSON.stringify(localData, null, 2) || '暂无数据';
+        }
+        
+        // localStorage 操作
+        function getLocalStorageData() {
+            try {
+                const data = localStorage.getItem('claude_mcp_sessions');
+                return data ? JSON.parse(data) : {};
+            } catch (error) {
+                log('local', `读取localStorage失败: ${error.message}`);
+                return {};
+            }
+        }
+        
+        function saveToLocalStorage(sessions) {
+            try {
+                localStorage.setItem('claude_mcp_sessions', JSON.stringify(sessions));
+                log('local', `保存到localStorage成功: ${Object.keys(sessions).length} 个会话`);
+                updateStatus();
+            } catch (error) {
+                log('local', `保存到localStorage失败: ${error.message}`);
+            }
+        }
+        
+        function createLocalSession() {
+            const sessions = getLocalStorageData();
+            const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const session = {
+                id: sessionId,
+                name: `测试会话 ${Object.keys(sessions).length + 1}`,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                messages: [
+                    {
+                        role: 'user',
+                        content: '这是一条测试消息',
+                        timestamp: new Date().toISOString()
+                    }
+                ],
+                settings: {
+                    systemPrompt: 'You are a helpful assistant',
+                    maxTurns: 5,
+                    allowedTools: ['WebSearch', 'Read']
+                }
+            };
+            
+            sessions[sessionId] = session;
+            saveToLocalStorage(sessions);
+            log('local', `创建本地会话: ${session.name}`);
+        }
+        
+        function updateLocalSession() {
+            const sessions = getLocalStorageData();
+            const sessionIds = Object.keys(sessions);
+            
+            if (sessionIds.length === 0) {
+                log('local', '没有可更新的会话');
+                return;
+            }
+            
+            const sessionId = sessionIds[0];
+            const session = sessions[sessionId];
+            session.name = `已更新 - ${session.name}`;
+            session.updatedAt = new Date().toISOString();
+            session.messages.push({
+                role: 'assistant',
+                content: '这是更新后添加的消息',
+                timestamp: new Date().toISOString()
+            });
+            
+            saveToLocalStorage(sessions);
+            log('local', `更新本地会话: ${session.name}`);
+        }
+        
+        function deleteLocalSession() {
+            const sessions = getLocalStorageData();
+            const sessionIds = Object.keys(sessions);
+            
+            if (sessionIds.length === 0) {
+                log('local', '没有可删除的会话');
+                return;
+            }
+            
+            const sessionId = sessionIds[sessionIds.length - 1];
+            const sessionName = sessions[sessionId].name;
+            delete sessions[sessionId];
+            
+            saveToLocalStorage(sessions);
+            log('local', `删除本地会话: ${sessionName}`);
+        }
+        
+        function clearLocalStorage() {
+            localStorage.removeItem('claude_mcp_sessions');
+            log('local', '清空localStorage');
+            updateStatus();
+        }
+        
+        function showLocalData() {
+            const data = getLocalStorageData();
+            log('local', `本地数据: ${JSON.stringify(data, null, 2)}`);
+            updateStatus();
+        }
+        
+        // 服务器操作
+        async function checkServerStatus() {
+            try {
+                updateSyncStatus('syncing', '检查中...');
+                const response = await fetch('/health');
+                
+                if (response.ok) {
+                    document.getElementById('serverStatus').textContent = '在线';
+                    log('server', '服务器状态: 在线');
+                    updateSyncStatus('ready', '就绪');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                document.getElementById('serverStatus').textContent = '离线';
+                log('server', `服务器状态: 离线 (${error.message})`);
+                updateSyncStatus('error', '离线');
+            }
+        }
+        
+        async function uploadToServer() {
+            const sessions = getLocalStorageData();
+            const sessionList = Object.values(sessions);
+            
+            if (sessionList.length === 0) {
+                log('server', '没有本地数据可上传');
+                return;
+            }
+            
+            try {
+                updateSyncStatus('syncing', '上传中...');
+                
+                for (const session of sessionList) {
+                    const response = await fetch(`${API_BASE}/${session.id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(session)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`上传会话失败: ${response.status}`);
+                    }
+                }
+                
+                log('server', `成功上传 ${sessionList.length} 个会话到服务器`);
+                updateSyncStatus('ready', '上传完成');
+                await showServerData();
+                
+            } catch (error) {
+                log('server', `上传失败: ${error.message}`);
+                updateSyncStatus('error', '上传失败');
+            }
+        }
+        
+        async function downloadFromServer() {
+            try {
+                updateSyncStatus('syncing', '下载中...');
+                const response = await fetch(`${API_BASE}/list`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const serverSessions = await response.json();
+                const sessions = {};
+                
+                for (const session of serverSessions) {
+                    sessions[session.id] = session;
+                }
+                
+                saveToLocalStorage(sessions);
+                log('server', `成功从服务器下载 ${serverSessions.length} 个会话`);
+                updateSyncStatus('ready', '下载完成');
+                
+            } catch (error) {
+                log('server', `下载失败: ${error.message}`);
+                updateSyncStatus('error', '下载失败');
+            }
+        }
+        
+        async function clearServerData() {
+            try {
+                const response = await fetch(`${API_BASE}/list`);
+                if (!response.ok) {
+                    throw new Error(`获取服务器数据失败: ${response.status}`);
+                }
+                
+                const serverSessions = await response.json();
+                
+                for (const session of serverSessions) {
+                    const deleteResponse = await fetch(`${API_BASE}/${session.id}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (!deleteResponse.ok) {
+                        log('server', `删除会话 ${session.id} 失败`);
+                    }
+                }
+                
+                log('server', `清空服务器数据: 删除了 ${serverSessions.length} 个会话`);
+                await showServerData();
+                
+            } catch (error) {
+                log('server', `清空服务器数据失败: ${error.message}`);
+            }
+        }
+        
+        async function showServerData() {
+            try {
+                const response = await fetch(`${API_BASE}/list`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const serverSessions = await response.json();
+                log('server', `服务器数据: ${serverSessions.length} 个会话`);
+                
+                document.getElementById('serverDataDisplay').textContent = 
+                    JSON.stringify(serverSessions, null, 2) || '暂无数据';
+                
+            } catch (error) {
+                log('server', `获取服务器数据失败: ${error.message}`);
+                document.getElementById('serverDataDisplay').textContent = '无法连接服务器';
+            }
+        }
+        
+        // 同步操作
+        async function testManualSync() {
+            const localSessions = Object.values(getLocalStorageData());
+            
+            try {
+                updateSyncStatus('syncing', '同步中...');
+                const response = await fetch(`${API_BASE}/sync`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(localSessions)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const syncedSessions = await response.json();
+                const sessions = {};
+                
+                for (const session of syncedSessions) {
+                    sessions[session.id] = session;
+                }
+                
+                saveToLocalStorage(sessions);
+                log('sync', `手动同步完成: ${syncedSessions.length} 个会话`);
+                updateSyncStatus('ready', '同步完成');
+                updateStatus();
+                
+            } catch (error) {
+                log('sync', `手动同步失败: ${error.message}`);
+                updateSyncStatus('error', '同步失败');
+            }
+        }
+        
+        async function testMergeConflict() {
+            const localSessions = Object.values(getLocalStorageData());
+            
+            try {
+                updateSyncStatus('syncing', '合并中...');
+                const response = await fetch(`${API_BASE}/merge`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(localSessions)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const mergeResult = await response.json();
+                
+                log('sync', `合并完成:`);
+                log('sync', `  - 本地: ${mergeResult.stats.total_local} 个会话`);
+                log('sync', `  - 服务器: ${mergeResult.stats.total_server} 个会话`);
+                log('sync', `  - 合并后: ${mergeResult.sessions.length} 个会话`);
+                log('sync', `  - 冲突: ${mergeResult.conflicts.length} 个`);
+                
+                if (mergeResult.conflicts.length > 0) {
+                    log('sync', '检测到冲突:');
+                    mergeResult.conflicts.forEach(conflict => {
+                        log('sync', `  - 会话 ${conflict.session_id}: 本地 ${conflict.local_time} vs 服务器 ${conflict.server_time}`);
+                    });
+                }
+                
+                const sessions = {};
+                for (const session of mergeResult.sessions) {
+                    sessions[session.id] = session;
+                }
+                
+                saveToLocalStorage(sessions);
+                updateSyncStatus('ready', '合并完成');
+                updateStatus();
+                
+            } catch (error) {
+                log('sync', `合并失败: ${error.message}`);
+                updateSyncStatus('error', '合并失败');
+            }
+        }
+        
+        async function testBatchSync() {
+            // 创建多个测试会话
+            const sessions = getLocalStorageData();
+            
+            for (let i = 0; i < 3; i++) {
+                const sessionId = `batch_session_${Date.now()}_${i}`;
+                sessions[sessionId] = {
+                    id: sessionId,
+                    name: `批量测试会话 ${i + 1}`,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    messages: [],
+                    settings: {
+                        systemPrompt: 'You are a helpful assistant',
+                        maxTurns: 5,
+                        allowedTools: ['WebSearch', 'Read']
+                    }
+                };
+            }
+            
+            saveToLocalStorage(sessions);
+            log('sync', '创建了3个批量测试会话');
+            
+            // 执行批量同步
+            await testManualSync();
+        }
+        
+        async function simulateOfflineSync() {
+            log('sync', '模拟离线同步...');
+            
+            // 创建一些本地数据
+            createLocalSession();
+            
+            // 尝试同步（应该失败）
+            try {
+                const response = await fetch('http://non-existent-server/api/sync', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify([])
+                });
+            } catch (error) {
+                log('sync', `离线同步失败（预期）: ${error.message}`);
+                updateSyncStatus('error', '离线模式');
+            }
+            
+            // 模拟恢复在线
+            setTimeout(() => {
+                log('sync', '模拟恢复在线状态');
+                updateSyncStatus('ready', '已恢复');
+            }, 3000);
+        }
+        
+        async function resetAll() {
+            clearLocalStorage();
+            try {
+                await clearServerData();
+            } catch (error) {
+                log('sync', `清空服务器数据失败: ${error.message}`);
+            }
+            log('sync', '重置所有数据完成');
+            updateStatus();
+        }
+        
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStatus();
+            checkServerStatus();
+            
+            // 每30秒检查一次服务器状态
+            setInterval(checkServerStatus, 30000);
+        });
+    </script>
+</body>
+</html>

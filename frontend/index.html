@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trend AI Agent</title>
+    <link rel="stylesheet" href="/static/css/chat.css">
+    <!-- Markdown渲染库 (本地化) -->
+    <script src="/static/libs/marked.min.js"></script>
+    <!-- 代码高亮库 (本地化) -->
+    <script src="/static/libs/prism-core.min.js"></script>
+    <script src="/static/libs/prism-autoloader.min.js"></script>
+    <link href="/static/libs/prism.css" rel="stylesheet">
+</head>
+<body>
+    <div class="chat-container">
+        <!-- 左侧会话管理面板 -->
+        <div class="sidebar" id="sidebar">
+            <div class="sync-status" id="syncStatus">
+                <span class="sync-indicator" id="syncIndicator">●</span>
+                <span class="sync-text" id="syncText">就绪</span>
+                <button id="syncBtn" class="sync-btn" title="同步会话">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 
+                                2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 
+                                0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 
+                                4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="sessions-container">
+                <div class="sessions-list" id="sessionsList">
+                    <div class="session-loading">
+                        <div class="loading-spinner-small"></div>
+                        <span>加载会话...</span>
+                    </div>
+                </div>
+            </div>
+            <!-- 会话收起/展开按钮 -->
+            <div class="sidebar-toggle-container">
+                <button id="sidebarToggleBtn" class="sidebar-toggle-btn" title="收起/展开会话管理">
+                    <span class="toggle-arrow">◀</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- 主聊天区域 -->
+        <div class="main-content">
+            <div class="chat-header">
+                <div class="header-left">
+                    <h1>Trend AI Agent</h1>
+                    <div class="status-indicator" id="statusIndicator">
+                        <span class="status-dot"></span>
+                        <span id="statusText">就绪</span>
+                    </div>
+                </div>
+                <div class="header-controls">
+                    <button id="mcpStatusBtn" class="mcp-status-btn" title="查看MCP服务器状态">
+                        <span class="mcp-icon">🔌</span>
+                        <span id="mcpStatusText">MCP</span>
+                    </button>
+                </div>
+            </div>
+        
+            <div class="chat-messages" id="chatMessages">
+                <div class="message assistant">
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">
+                        <p>您好！我是 Trend AI Agent。我可以帮您：</p>
+                        <ul>
+                            <li>📝 回答编程相关问题</li>
+                            <li>🔍 搜索和分析代码</li>
+                            <li>🔌 使用MCP工具访问外部服务</li>
+                            <li>💡 提供技术建议和解决方案</li>
+                        </ul>
+                        <p>请输入您的问题开始对话！</p>
+                    </div>
+                </div>
+            </div>
+        
+            <div class="chat-input-container">
+                <div class="chat-settings">
+                    <div class="mode-settings-group">
+                        <button id="modeBtn" class="mode-btn" title="选择模式">
+                            <span id="currentMode">General Model</span>
+                        </button>
+                        <button id="settingsBtn" class="settings-btn" title="设置">⚙️</button>
+                    </div>
+                    <button id="clearBtn" class="clear-btn" title="清空对话">🗑️</button>
+                </div>
+            
+                <div class="chat-input-area">
+                    <textarea id="messageInput" placeholder="输入您的消息..." rows="1"></textarea>
+                    <button id="sendBtn" class="send-btn" title="发送消息">
+                        <span class="send-icon">📤</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 设置面板 -->
+        <div id="settingsPanel" class="settings-panel">
+            <div class="settings-content">
+                <h3>聊天设置</h3>
+                <div class="setting-item">
+                    <label>系统提示词:</label>
+                    <textarea id="systemPrompt" rows="3" placeholder="输入系统提示词..."></textarea>
+                </div>
+                <div class="setting-item">
+                    <label>最大轮次:</label>
+                    <input type="number" id="maxTurns" value="20" min="1" max="100">
+                </div>
+                <div class="setting-item">
+                    <label>工具权限级别:</label>
+                    <div class="tools-layers">
+                        <!-- 基础权限 -->
+                        <div class="tool-layer">
+                            <div class="layer-header">
+                                <h4>🌐 基础权限</h4>
+                                <span class="layer-desc">网络搜索和信息查询</span>
+                            </div>
+                            <div class="layer-tools">
+                                <label><input type="checkbox" value="WebSearch" checked> WebSearch</label>
+                            </div>
+                        </div>
+                        
+                        <!-- 只读权限 -->
+                        <div class="tool-layer">
+                            <div class="layer-header">
+                                <h4>📖 只读权限</h4>
+                                <span class="layer-desc">文件读取和内容搜索</span>
+                            </div>
+                            <div class="layer-tools">
+                                <label><input type="checkbox" value="Read" checked> Read</label>
+                                <label><input type="checkbox" value="Grep"> Grep</label>
+                            </div>
+                        </div>
+                        
+                        <!-- 文件修改权限 -->
+                        <div class="tool-layer">
+                            <div class="layer-header">
+                                <h4>✏️ 文件修改权限</h4>
+                                <span class="layer-desc">创建和编辑文件 (中等风险)</span>
+                            </div>
+                            <div class="layer-tools">
+                                <label><input type="checkbox" value="Write"> Write</label>
+                                <label><input type="checkbox" value="Edit"> Edit</label>
+                            </div>
+                        </div>
+                        
+                        <!-- 系统级权限 -->
+                        <div class="tool-layer system-level">
+                            <div class="layer-header">
+                                <h4>⚠️ 系统级权限</h4>
+                                <span class="layer-desc">完整系统访问 (包含所有上述功能 + 命令执行)</span>
+                            </div>
+                            <div class="layer-tools">
+                                <label><input type="checkbox" value="Bash"> Bash (超级权限)</label>
+                            </div>
+                            <div class="system-warning">
+                                <small>⚠️ 启用Bash等于获得所有文件和系统操作权限</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="setting-actions">
+                    <button id="saveSettings">保存设置</button>
+                    <button id="closeSettings">关闭</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模式选择面板 -->
+        <div id="modePanel" class="mode-panel">
+            <div class="mode-content">
+                <h3>选择模式</h3>
+                <div class="mode-options">
+                    <div class="mode-option" data-mode="general">
+                        <div class="mode-title">General Model</div>
+                        <div class="mode-desc">不限制和引导思考</div>
+                    </div>
+                    <div class="mode-option" data-mode="pct_analysis_v2">
+                        <div class="mode-title">PCT Analysis V2</div>
+                        <div class="mode-desc">专业的PCT分析功能</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- MCP状态面板 -->
+        <div id="mcpStatusPanel" class="mcp-status-panel">
+            <div class="mcp-status-content">
+                <div class="mcp-header">
+                    <h3>🔌 MCP 服务器状态</h3>
+                    <div class="mcp-header-controls">
+                        <button id="refreshMcpBtn" class="mcp-refresh-btn" title="刷新状态">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 
+                                        2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 
+                                        0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 
+                                        4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+                            </svg>
+                        </button>
+                        <button id="closeMcpStatus" class="mcp-close-btn" title="关闭">✕</button>
+                    </div>
+                </div>
+                
+                <div class="mcp-overview">
+                    <div class="mcp-summary">
+                        <div class="mcp-stat">
+                            <span class="mcp-stat-label">总服务器</span>
+                            <span class="mcp-stat-value" id="mcpTotalServers">-</span>
+                        </div>
+                        <div class="mcp-stat">
+                            <span class="mcp-stat-label">运行中</span>
+                            <span class="mcp-stat-value running" id="mcpRunningServers">-</span>
+                        </div>
+                        <div class="mcp-stat">
+                            <span class="mcp-stat-label">可用工具</span>
+                            <span class="mcp-stat-value" id="mcpTotalTools">-</span>
+                        </div>
+                    </div>
+                    <div class="mcp-overall-status" id="mcpOverallStatus">
+                        <span class="status-badge unknown">检查中...</span>
+                    </div>
+                </div>
+                
+                <div class="mcp-servers-list" id="mcpServersList">
+                    <div class="mcp-loading">
+                        <div class="loading-spinner"></div>
+                        <span>加载服务器状态...</span>
+                    </div>
+                </div>
+                
+                <div class="mcp-actions">
+                    <button id="mcpStartAllBtn" class="mcp-action-btn primary">启动所有服务器</button>
+                    <button id="mcpStopAllBtn" class="mcp-action-btn secondary">停止所有服务器</button>
+                    <button id="mcpReloadConfigBtn" class="mcp-action-btn">重载配置</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 加载遮罩 -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="loading-spinner"></div>
+            <p>正在连接Claude MCP...</p>
+        </div>
+    </div>
+
+    <!-- Confirm Dialog -->
+    <div id="confirmDialog" class="confirm-dialog">
+        <div class="confirm-content">
+            <div id="confirmTitle" class="confirm-title">确认操作</div>
+            <div id="confirmMessage" class="confirm-message">您确定要执行此操作吗？</div>
+            <div class="confirm-actions">
+                <button id="confirmCancel" class="confirm-btn cancel">取消</button>
+                <button id="confirmOk" class="confirm-btn danger">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="notification-container"></div>
+
+    <script src="/static/js/confirmDialog.js"></script>
+    <script src="/static/js/markdown-formatter.js"></script>
+    <script src="/static/js/sessionManager.js"></script>
+    <script src="/static/js/chat.js"></script>
+</body>
+</html>
