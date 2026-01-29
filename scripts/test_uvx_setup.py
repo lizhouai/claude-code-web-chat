@@ -11,7 +11,7 @@ from pathlib import Path
 
 def create_test_config():
     """Create a test configuration file"""
-    config_dir = Path.home() / '.trendaiagent'
+    config_dir = Path.home() / '.claudecodechat'
     config_file = config_dir / 'env.conf'
     
     # Create backup if exists
@@ -149,13 +149,13 @@ def cleanup_test_files():
 def restore_config(backup_file):
     """Restore original configuration if exists"""
     if backup_file and backup_file.exists():
-        config_file = Path.home() / '.trendaiagent' / 'env.conf'
+        config_file = Path.home() / '.claudecodechat' / 'env.conf'
         shutil.copy2(backup_file, config_file)
         backup_file.unlink()
         print(f"🔄 Restored original configuration from backup")
     else:
         # Remove test config
-        config_file = Path.home() / '.trendaiagent' / 'env.conf'
+        config_file = Path.home() / '.claudecodechat' / 'env.conf'
         if config_file.exists():
             config_file.unlink()
             print("🗑️ Removed test configuration")

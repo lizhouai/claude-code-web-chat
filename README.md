@@ -336,7 +336,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ### v1.2.0 (2025-09-24)
 
 - **🎯 One-Click Deployment**: Added uvx support for easy installation and running
-- **📋 Simplified Configuration**: User configuration via `~/.trendaiagent/env.conf`
+- **📋 Simplified Configuration**: User configuration via `~/.claudecodechat/env.conf`
 - **🚀 Automatic Setup**: Integrated environment and Claude settings generation
 - **🌐 Auto-Launch**: Automatic browser opening on startup
 - **📦 Streamlined Installation**: No need for manual dependency management
