@@ -2,7 +2,7 @@
   "mcpServers": {
     "confluence": {
       "command": "uvx",
-      "args": ["--with", "pydantic==2.11.10", "mcp-atlassian"],
+      "args": ["--with-requirements", "pydantic==2.11.10", "mcp-atlassian"],
       "env": {
         "CONFLUENCE_URL": "${MCP_CONFLUENCE_SERVER_URL}",
         "CONFLUENCE_USERNAME": "${MCP_CONFLUENCE_USERNAME}",
