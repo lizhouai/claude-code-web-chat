@@ -154,7 +154,7 @@ The easiest way to get started! Just create a configuration file and run with uv
 
 4. **Run with uvx**
    ```bash
-   uvx --python 3.11 --from git+https://github.com/lizhou/claude-code-web-chat.git claude-code-web-chat
+   uvx --python 3.11 --from git+https://github.com/lizhouai/claude-code-web-chat.git claude-code-web-chat
    ```
 
 That's it! The application will:
@@ -177,7 +177,7 @@ That's it! The application will:
 
 1. **Clone and setup**
    ```bash
-   git clone https://github.com/lizhou/claude-code-web-chat.git
+   git clone https://github.com/lizhouai/claude-code-web-chat.git
    cd claude-code-web-chat
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate

@@ -86,7 +86,7 @@ graph TD
 
 4. 运行服务：
    ```bash
-   uvx --from git+https://github.com/lizhou/claude-code-web-chat.git claude-code-web-chat
+   uvx --from git+https://github.com/lizhouai/claude-code-web-chat.git claude-code-web-chat
    ```
 
 ### 后续使用
