@@ -126,6 +126,7 @@ The easiest way to get started! Just create a configuration file and run with uv
 2. **Create configuration file**
    ```bash
    cat > ~/.claudecodechat/env.conf << 'EOF'
+   ANTHROPIC_BASE_URL=your_anthropic_base_url_here
    ANTHROPIC_API_KEY=your_anthropic_api_key_here
    ANTHROPIC_MODEL=claude-4.5-sonnet
    ANTHROPIC_DEFAULT_OPUS_MODEL=claude-4.1-opus
@@ -145,6 +146,7 @@ The easiest way to get started! Just create a configuration file and run with uv
 3. **Edit the configuration file and update with your actual credentials**
    ```bash
    # Edit ~/.claudecodechat/env.conf and replace the placeholder values:
+   # - your_anthropic_base_url_here: Your actual Anthropic base url
    # - your_anthropic_api_key_here: Your actual Anthropic API key
    # - your_jira_username@example.com: Your Jira username/email
    # - your_jira_api_token_here: Your Jira API token
