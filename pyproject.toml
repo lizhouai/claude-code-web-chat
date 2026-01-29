@@ -57,6 +57,12 @@ files = ["requirements.txt"]
 [tool.hatch.build.targets.wheel]
 packages = ["app", "frontend", "scripts", "claude_code_web_chat", "conf"]
 
+[tool.hatch.build.targets.wheel.shared-data]
+".env.example" = ".env.example"
+"conf/.env.example" = "conf/.env.example"
+"conf/mcp_servers.json" = "conf/mcp_servers.json"
+"mcp_servers.json" = "mcp_servers.json"
+
 [tool.black]
 line-length = 88
 target-version = ['py311']
