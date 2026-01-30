@@ -26,6 +26,9 @@ def create_test_config():
     
     # Create test configuration
     test_config = """[DEFAULT]
+ANTHROPIC_CUSTOM_HEADERS=anthropic-beta: context-1m-2025-08-07
+DISABLE_NON_ESSENTIAL_MODEL_CALLS=1
+DISABLE_TELEMETRY=1
 ANTHROPIC_BASE_URL=https://api.rdsec.trendmicro.com/prod/aiendpoint/
 ANTHROPIC_AUTH_TOKEN=test_token_here
 ANTHROPIC_MODEL=claude-4.5-sonnet

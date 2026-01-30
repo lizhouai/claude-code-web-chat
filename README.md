@@ -126,6 +126,9 @@ The easiest way to get started! Just create a configuration file and run with uv
 2. **Create configuration file**
    ```bash
    cat > ~/.claudecodechat/env.conf << 'EOF'
+   ANTHROPIC_CUSTOM_HEADERS=anthropic-beta: context-1m-2025-08-07
+   DISABLE_NON_ESSENTIAL_MODEL_CALLS=1
+   DISABLE_TELEMETRY=1
    ANTHROPIC_BASE_URL=your_anthropic_base_url_here
    ANTHROPIC_AUTH_TOKEN=your_anthropic_auth_token_here
    ANTHROPIC_MODEL=claude-4.5-sonnet

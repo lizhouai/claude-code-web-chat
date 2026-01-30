@@ -30,6 +30,9 @@ def generate_claude_settings():
     
     # Read required environment variables
     env_vars = {
+        "ANTHROPIC_CUSTOM_HEADERS": os.getenv("ANTHROPIC_CUSTOM_HEADERS"),
+        "DISABLE_NON_ESSENTIAL_MODEL_CALLS": os.getenv("DISABLE_NON_ESSENTIAL_MODEL_CALLS"),
+        "DISABLE_TELEMETRY": os.getenv("DISABLE_TELEMETRY"),
         "ANTHROPIC_BASE_URL": os.getenv("ANTHROPIC_BASE_URL"),
         "ANTHROPIC_AUTH_TOKEN": os.getenv("ANTHROPIC_AUTH_TOKEN"), 
         "ANTHROPIC_MODEL": os.getenv("ANTHROPIC_MODEL"),

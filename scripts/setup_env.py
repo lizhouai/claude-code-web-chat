@@ -21,6 +21,9 @@ def find_config_file():
         print(f"Example content:")
         print(f"""
 [DEFAULT]
+ANTHROPIC_CUSTOM_HEADERS=anthropic-beta: context-1m-2025-08-07
+DISABLE_NON_ESSENTIAL_MODEL_CALLS=1
+DISABLE_TELEMETRY=1
 ANTHROPIC_BASE_URL=your_base_url_here
 ANTHROPIC_AUTH_TOKEN=your_auth_token_here
 ANTHROPIC_MODEL=claude-4.5-sonnet
