@@ -11,12 +11,29 @@ from app.services.mcp_manager import mcp_manager
 from app.utils.config import local_config
 logger = logging.getLogger(__name__)
 
+def setup_anthropic_env():
+    """Setup Anthropic environment variables before creating SDK client"""
+    # Get custom headers from environment
+    custom_headers = os.getenv('ANTHROPIC_CUSTOM_HEADERS', '').strip()
+    if custom_headers:
+        os.environ['ANTHROPIC_CUSTOM_HEADERS'] = custom_headers
+        logger.info(f"Using ANTHROPIC_CUSTOM_HEADERS: {custom_headers}")
+
+    # Set other environment variables
+    if os.getenv('DISABLE_NON_ESSENTIAL_MODEL_CALLS'):
+        logger.info(f"DISABLE_NON_ESSENTIAL_MODEL_CALLS: {os.getenv('DISABLE_NON_ESSENTIAL_MODEL_CALLS')}")
+
+    if os.getenv('DISABLE_TELEMETRY'):
+        logger.info(f"DISABLE_TELEMETRY: {os.getenv('DISABLE_TELEMETRY')}")
+
 class ClaudeService:
     def __init__(self):
         self.client = None
         self.mcp_tools = []
         self.mcp_tools_cache_valid = False
         self.active_sessions = {}  # Store active sessions for interruption
+        # Setup environment on initialization
+        setup_anthropic_env()
     
     def build_conversation_prompt(self, request: QueryRequest) -> str:
         """Build complete prompt including conversation history"""
