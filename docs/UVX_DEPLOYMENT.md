@@ -19,7 +19,8 @@
 
 ```ini
 [DEFAULT]
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
+ANTHROPIC_BASE_URL=your_anthropic_base_url_here
+ANTHROPIC_AUTH_TOKEN=your_anthropic_auth_token_here
 ANTHROPIC_MODEL=claude-4.5-sonnet
 # ... 其他配置项
 ```
@@ -76,7 +77,8 @@ graph TD
    ```bash
    cat > ~/.claudecodechat/env.conf << 'EOF'
    [DEFAULT]
-   ANTHROPIC_API_KEY=your_actual_api_key_here
+   ANTHROPIC_BASE_URL=your_anthropic_base_url_here
+   ANTHROPIC_AUTH_TOKEN=your_anthropic_auth_token_here
    ANTHROPIC_MODEL=claude-4.5-sonnet
    # ... 其他配置
    EOF
