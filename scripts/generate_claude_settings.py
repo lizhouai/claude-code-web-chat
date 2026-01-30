@@ -61,6 +61,9 @@ def generate_claude_settings():
     # Create settings with defaults for optional variables
     settings = {
         "env": {
+            "ANTHROPIC_CUSTOM_HEADERS": env_vars["ANTHROPIC_CUSTOM_HEADERS"],
+            "DISABLE_NON_ESSENTIAL_MODEL_CALLS": env_vars["DISABLE_NON_ESSENTIAL_MODEL_CALLS"],
+            "DISABLE_TELEMETRY": env_vars["DISABLE_TELEMETRY"],
             "ANTHROPIC_BASE_URL": env_vars["ANTHROPIC_BASE_URL"],
             "ANTHROPIC_AUTH_TOKEN": env_vars["ANTHROPIC_AUTH_TOKEN"],
             "ANTHROPIC_MODEL": env_vars["ANTHROPIC_MODEL"] or "claude-4.5-sonnet",
