@@ -159,7 +159,7 @@ The easiest way to get started! Just create a configuration file and run with uv
 
 4. **Run with uvx**
    ```bash
-   uvx --python 3.11 --from git+ssh://github.com/lizhouai/claude-code-web-chat.git claude-code-web-chat
+   uvx --python 3.11 --from git+https://github.com/lizhouai/claude-code-web-chat.git claude-code-web-chat
    ```
 
 That's it! The application will:
