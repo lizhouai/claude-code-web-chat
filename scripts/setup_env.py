@@ -64,9 +64,12 @@ def load_config_from_file(config_file):
     try:
         with open(config_file, 'r', encoding='utf-8') as f:
             content = f.read()
-        
+
+        lines = content.splitlines()
+        first_line = next((line.strip() for line in lines if line.strip() and not line.strip().startswith('#')), '')
+
         # Try to detect if it's INI format by looking for section headers
-        if '[DEFAULT]' in content or ('[' in content and ']' in content):
+        if first_line.startswith('[') and first_line.endswith(']'):
             # Use ConfigParser for INI format
             config = configparser.ConfigParser()
             config.read(config_file, encoding='utf-8')
@@ -75,7 +78,7 @@ def load_config_from_file(config_file):
         else:
             # Parse simple key=value format
             print("📋 Detected simple key=value format configuration")
-            lines = content.splitlines()
+            
             for line_num, line in enumerate(lines, 1):
                 line = line.strip()
                 
